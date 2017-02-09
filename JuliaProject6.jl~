@@ -1,0 +1,130 @@
+module RudInt
+
+push!(LOAD_PATH, ".")
+
+using Error
+using Lexer
+export parse, calc, Num
+
+#
+# =================================================
+#
+
+
+abstract OWL
+
+type Num <: OWL
+	n::Real
+end
+
+type Binop <: OWL
+	op::Function
+	lhs::OWL
+	rhs::OWL
+end
+
+type Unop <: OWL
+	op::Function
+	operand::OWL
+end
+
+#
+# =================================================
+#
+
+function collatz(n::Real)
+  return collatz_helper(n, 0)
+end
+ 
+function collatz_helper(n::Real, num_iters::Int)
+  if n == 1
+    return num_iters
+  end
+  if mod(n,2)==0
+    return collatz_helper(n/2, num_iters+1)
+  else
+    return collatz_helper(3*n+1, num_iters+1)  
+  end
+end
+
+#
+# =================================================
+#
+
+# This is the operator table to store julia operations
+
+op_table = Dict([	(:+,+),
+			(:-,-),
+			(:*,*),
+			(:/,/),
+			(:mod,mod),
+			(:collatz,collatz)
+			])
+
+#
+# =================================================
+#
+
+function parse(expr::Real)
+	return Num(expr)
+end
+
+function parse(expr::Array{Any})
+	op_symbol = expr[1]
+	if haskey(op_table, op_symbol)
+		if length(expr) == 3
+			if op_symbol != :collatz
+				return Binop(op_table[op_symbol], parse(expr[2]), parse(expr[3]))
+			else
+				throw(LispError("Too many operands"))
+			end
+		elseif length(expr) == 2
+			if op_symbol == :- || op_symbol == :collatz
+				return Unop(op_table[op_symbol], parse(expr[2]))
+			else
+				throw(LispError("Not enough operands"))
+			end
+		else
+			throw(LispError("Wrong amount of params!"))
+		end
+	else
+		throw(LispError("Unknown Operation!"))
+	end
+end
+
+function parse(expr::Any)
+	throw(LispError("Invalid type $expr"))
+end
+
+#
+# =================================================
+#
+
+function calc( e::Num )
+	return e.n
+end
+
+function calc(e::Binop)
+	left = calc(e.lhs)
+	right = calc(e.rhs)
+	if (e.op == /) && (right == 0)
+		throw(LispError("Cannot divide by zero."))
+	else
+		return e.op(left, right)
+	end
+end
+
+function calc(e::Unop)
+	unary = calc(e.operand)
+	if (e.op == collatz && unary <= 0)
+		throw(LispError("Cannot perform collatz on number $unary"))
+	else
+		return e.op(calc(e.operand))
+	end
+end
+
+function calc(e::Any)
+	throw(LispError("Cannot calculate."))
+end
+
+end # module
