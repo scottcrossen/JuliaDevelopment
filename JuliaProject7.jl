@@ -127,8 +127,13 @@ function parse(expr::Real)
 	return Num(expr)
 end
 # Parse things with type Id
-function parse( expr::Symbol )
-  return Id( expr ) # TODO: Check reservered words
+function parse(expr::Symbol)
+	key_words=[:+,:-,:*,:/,:mod,:collatz,:if0,:with,:lambda]
+	if expr in key_words
+	   	throw(LispError("Key words not allowed as Ids."))
+	else
+		return Id(expr) # TODO: Check reservered words
+	end
 end
 # When an array is encountered use this
 function parse(expr::Array{Any})
@@ -152,7 +157,7 @@ function parse(expr::Array{Any})
 				throw(LispError("Not enough operands")) # Throw this if not uniary operator
 			end
 		else
-			throw(Lisprror("Wrong amount of params!")) # Throw this if not correct arg length
+			throw(LispError("Wrong amount of params!")) # Throw this if not correct arg length
 		end
 	# handle new operations and ast elements seperately
 	elseif op_symbol==:if0
@@ -162,14 +167,15 @@ function parse(expr::Array{Any})
 			else_branch=parse(expr[4])
 			return If0(test_case, then_branch, else_branch)
 		else
-		throw(LispError("Invalid \'If0\' syntax"))
+			throw(LispError("Invalid \'If0\' syntax"))
+		end
 	elseif op_symbol == :with
 	       	if length(expr) == 3
 		   	binding_exprs=expr[2]
 			if no_dups(binding_exprs)
 				binders=Binder[]
-				for i in 1:size(exprs,1)
-				      push!(binders, Binder(exprs[i][1], parse(binding_exprs[i][2])))
+				for i in 1:size(binding_exprs,1)
+				      	push!(binders, Binder(binding_exprs[i][1], parse(binding_exprs[i][2])))
 				end
 				body = parse(expr[3])
 				return With(binders, body)
@@ -177,12 +183,12 @@ function parse(expr::Array{Any})
 				throw(LispError("Duplicate symbols in with statement."))
 			end
 		else
-		   	throw(LispError("Invalid \'with\' syntax"))
+			throw(LispError("Invalid \'with\' syntax"))
 		end
 	elseif op_symbol == :lambda
 	       	if length(expr) == 3
 		   	if no_dups(expr[2])
-				return FunDef(expr[2],parse[expr[3]))
+				return FunDef(expr[2],parse(expr[3]))
 			else
 				throw(LispError("Duplicate symbols in lambda expression"))
 			end
@@ -193,7 +199,7 @@ function parse(expr::Array{Any})
 		fun_expr=parse(op_symbol)
 		arg_exprs=OWL[]
 		for i in 2:size(expr,1)
-		      	 push!(arg_exprs, parse(expr[i]))
+		      	push!(arg_exprs, parse(expr[i]))
 		end
 		return FunApp(fun_expr, arg_exprs)
 	end
@@ -203,39 +209,38 @@ function parse(expr::Any)
 	throw(LispError("Invalid type $expr"))
 end
 # check for duplicate symbols in with statement
-function no_dups( exprs::Array{Any} )
+function no_dups(exprs::Array{Any})
 	if length(exprs) == 0
     	   	return true
   	end
   	syms = Any[]
   	if typeof(exprs[1]) == Array{Any,1}
     	   	for i in 1:size(exprs,1)
-      		      	 if in( exprs[i][1], syms )
+      		      	 if in(exprs[i][1], syms)
         		    	return false
 			 else
-				push!( syms, exprs[i][1] )
+				push!(syms, exprs[i][1])
 			 end
 		end
 		return true
 	elseif typeof(exprs[1]) == Symbol
     	       	for i in 1:size(exprs,1)
       		      	 if typeof(exprs[i]) != Symbol
-        		    	throw( LispError( "Must use symbols." ) )
-      			 end
-			 elseif in( exprs[i], syms )
+        		    	throw(LispError("Must use symbols."))
+			 elseif in(exprs[i], syms)
 			    	return false
 			 else
-				push!( syms, exprs[i] )
+				push!(syms, exprs[i])
 			 end
 		end
 		return true
 	else
-		throw( LispError( "Improper format. Missing parenthesis." ) )
+		throw(LispError("Improper format. Missing parenthesis."))
 	end
 end
 # default
-function no_dups( exprs::Any )
-	throw( LispError( "Improper format. Expected array." ) )
+function no_dups(exprs::Any)
+	throw(LispError("Improper format. Expected array."))
 end
 
 #
@@ -344,28 +349,25 @@ function calc( owl::FunApp, env::Environment )
 	 if typeof(the_closure) == ClosureVal
 	    	 if length(owl.arg_exprs) != length(the_closure.params)
 		    	  throw(LispError("Number of parameters does not match in function call/declaration."))
-	 end
-	 # extend the current environment by binding the actual parameters to the formal parameters
-	 symvals = SymVal[]
-	 for i in 1:size(owl.arg_exprs,1)
-	       	 push!(symvals, SymVal(the_closure.params[i], calc(owl.arg_exprs[i], env)))
-	 end
-	 #actual_parameter = calc(owl.arg_expr, env)
-	 #formal_parameter = the_closure.param
-	 #new_env = CEnvironment(formal_parameter, actual_parameter, the_closure.env)
-	 new_env = CEnvironment(symvals, the_closure.env)
-	 rval = calc(the_closure.body, new_env)
+	 	 end
+	 	 # extend the current environment by binding the actual parameters to the formal parameters
+	 	 symvals = SymVal[]
+	 	 for i in 1:size(owl.arg_exprs,1)
+	       	       	  push!(symvals, SymVal(the_closure.params[i], calc(owl.arg_exprs[i], env)))
+	 	 end
+	 	 new_env = CEnvironment(symvals, the_closure.env)
+	 	 rval = calc(the_closure.body, new_env)
 	      	 return rval
-		 else
-    throw(LispError("fun_expr did not return a ClosureVal."))
-  end
+	 else
+		 throw(LispError("fun_expr did not return a ClosureVal."))
+	 end
 end
 # default case
 function calc(owl::Any)
-	throw(LispError("Cannot calculate."))
+	 throw(LispError("Cannot calculate."))
 end
 function calc(owl::Any, env::Environment)
-  throw(LispError("Cannot calculate."))
+	 throw(LispError("Cannot calculate."))
 end
 
 #
