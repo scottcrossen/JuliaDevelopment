@@ -138,70 +138,71 @@ end
 # When an array is encountered use this
 function parse(expr::Array{Any})
 	# Check to make sure array is not empty
-	if length(expr) < 1
-	   	throw(LispError("No parameters"));
-	end
-	# The operator should be the first argument
-	op_symbol = expr[1]
-	if haskey(op_table, op_symbol) # Check to make sure this is a valid op.
-		if length(expr) == 3 # All Operators have 3 or 2 length => 2 or 1 arguments respectively.
-			if op_symbol != :collatz # Only the collatz operator needs 1 argument.
-				return Binop(op_table[op_symbol], parse(expr[2]), parse(expr[3]))
-			else
-				throw(LispError("Too many operands")) # Throws if 'collatz' is called with more than one argument.
-			end
-		elseif length(expr) == 2
-			if op_symbol == :- || op_symbol == :collatz # These are the only two allowed 1-arg symbols
-				return Unop(op_table[op_symbol], parse(expr[2]))
-			else
-				throw(LispError("Not enough operands")) # Throw this if not uniary operator
-			end
-		else
-			throw(LispError("Wrong amount of params!")) # Throw this if not correct arg length
-		end
-	# handle new operations and ast elements seperately
-	elseif op_symbol==:if0
-		if length(expr)==4
-			test_case=parse(expr[2])
-			then_branch=parse(expr[3])
-			else_branch=parse(expr[4])
-			return If0(test_case, then_branch, else_branch)
-		else
-			throw(LispError("Invalid \'If0\' syntax"))
-		end
-	elseif op_symbol == :with
-	       	if length(expr) == 3
-		   	binding_exprs=expr[2]
-			if no_dups(binding_exprs)
-				binders=Binder[]
-				for i in 1:size(binding_exprs,1)
-				      	push!(binders, Binder(binding_exprs[i][1], parse(binding_exprs[i][2])))
+	if length(expr) >= 1
+	   	# The operator should be the first argument
+		op_symbol = expr[1]
+		if haskey(op_table, op_symbol) # Check to make sure this is a valid op.
+		   	if length(expr) == 3 # All Operators have 3 or 2 length => 2 or 1 arguments respectively.
+			   	if op_symbol != :collatz # Only the collatz operator needs 1 argument.
+				   	return Binop(op_table[op_symbol], parse(expr[2]), parse(expr[3]))
+				else
+					throw(LispError("Too many operands")) # Throws if 'collatz' is called with more than one argument.
 				end
-				body = parse(expr[3])
-				return With(binders, body)
+			elseif length(expr) == 2
+			       	if op_symbol == :- || op_symbol == :collatz # These are the only two allowed 1-arg symbols
+				   	return Unop(op_table[op_symbol], parse(expr[2]))
+				else
+					throw(LispError("Not enough operands")) # Throw this if not uniary operator
+				end
 			else
-				throw(LispError("Duplicate symbols in with statement."))
+				throw(LispError("Wrong amount of params!")) # Throw this if not correct arg length
+			end
+			# handle new operations and ast elements seperately
+		elseif op_symbol==:if0
+		        if length(expr)==4
+				test_case=parse(expr[2])
+				then_branch=parse(expr[3])
+				else_branch=parse(expr[4])
+				return If0(test_case, then_branch, else_branch)
+			else
+				throw(LispError("Invalid \'If0\' syntax"))
+			end
+		elseif op_symbol == :with
+	       	        if length(expr) == 3
+		   	   	binding_exprs=expr[2]
+				if no_dups(binding_exprs)
+					binders=Binder[]
+					for i in 1:size(binding_exprs,1)
+				      	       push!(binders, Binder(binding_exprs[i][1], parse(binding_exprs[i][2])))
+					end
+					body = parse(expr[3])
+					return With(binders, body)
+				else
+					throw(LispError("Duplicate symbols in with statement."))
+				end
+			else
+				throw(LispError("Invalid \'with\' syntax"))
+			end
+		elseif op_symbol == :lambda
+	       	        if length(expr) == 3
+		   	   	if no_dups(expr[2])
+					return FunDef(expr[2],parse(expr[3]))
+				else
+					throw(LispError("Duplicate symbols in lambda expression"))
+				end
+	       		else
+				throw(LispError("Invalid \'lambda\' syntax"))
 			end
 		else
-			throw(LispError("Invalid \'with\' syntax"))
-		end
-	elseif op_symbol == :lambda
-	       	if length(expr) == 3
-		   	if no_dups(expr[2])
-				return FunDef(expr[2],parse(expr[3]))
-			else
-				throw(LispError("Duplicate symbols in lambda expression"))
+			fun_expr=parse(op_symbol)
+			arg_exprs=OWL[]
+			for i in 2:size(expr,1)
+		      	      	push!(arg_exprs, parse(expr[i]))
 			end
-	       	else
-			throw(LispError("Invalid \'lambda\' syntax"))
+			return FunApp(fun_expr, arg_exprs)
 		end
 	else
-		fun_expr=parse(op_symbol)
-		arg_exprs=OWL[]
-		for i in 2:size(expr,1)
-		      	push!(arg_exprs, parse(expr[i]))
-		end
-		return FunApp(fun_expr, arg_exprs)
+		throw(LispError("No parameters"));
 	end
 end
 # Catch all other parse types.
@@ -210,33 +211,34 @@ function parse(expr::Any)
 end
 # check for duplicate symbols in with statement
 function no_dups(exprs::Array{Any})
-	if length(exprs) == 0
+	if length(exprs) > 0
+  	   	syms = Any[]
+		if typeof(exprs[1]) == Array{Any,1}
+    	   		 for i in 1:size(exprs,1)
+      		      	 	if in(exprs[i][1], syms)
+        		    	      	return false
+				else
+					push!(syms, exprs[i][1])
+			 	end
+			end
+			return true
+		elseif typeof(exprs[1]) == Symbol
+    	       	        for i in 1:size(exprs,1)
+      		      	      	if typeof(exprs[i]) != Symbol
+        		    	   	throw(LispError("Must use symbols."))
+				elseif in(exprs[i], syms)
+			    	        return false
+			 	else
+					push!(syms, exprs[i])
+			 	end
+			end
+			return true
+		else
+			throw(LispError("Improper format. Missing parenthesis."))
+		end
+	else
     	   	return true
   	end
-  	syms = Any[]
-  	if typeof(exprs[1]) == Array{Any,1}
-    	   	for i in 1:size(exprs,1)
-      		      	 if in(exprs[i][1], syms)
-        		    	return false
-			 else
-				push!(syms, exprs[i][1])
-			 end
-		end
-		return true
-	elseif typeof(exprs[1]) == Symbol
-    	       	for i in 1:size(exprs,1)
-      		      	 if typeof(exprs[i]) != Symbol
-        		    	throw(LispError("Must use symbols."))
-			 elseif in(exprs[i], syms)
-			    	return false
-			 else
-				push!(syms, exprs[i])
-			 end
-		end
-		return true
-	else
-		throw(LispError("Improper format. Missing parenthesis."))
-	end
 end
 # default
 function no_dups(exprs::Any)
