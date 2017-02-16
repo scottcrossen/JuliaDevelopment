@@ -144,7 +144,7 @@ function parse(expr::Array{Any})
 				return If0(parse(expr[2]), parse(expr[3]), parse(expr[4])) # Good Input gives good return
 				# In case it isn't clear, 'If0' is a node in the AST and has a type defined for it.
 			else
-				throw(LispError("Wrong amount of parameter given for \'If0\'"))
+				throw(LispError("Wrong amount of parameters given for \'If0\'"))
 			end
 		elseif op_symbol == :with
 	       	        if length(expr) == 3 # Verify correct argument length
@@ -160,7 +160,7 @@ function parse(expr::Array{Any})
 					throw(LispError("Duplicate symbols in \'with\' statement"))
 				end
 			else
-				throw(LispError("Wrong amount of parameter given for \'with\'"))
+				throw(LispError("Wrong amount of parameters given for \'with\'"))
 			end
 		elseif op_symbol == :lambda
 	       	        if length(expr) == 3 # Verify correct argument length
@@ -170,7 +170,7 @@ function parse(expr::Array{Any})
 					throw(LispError("Duplicate symbols in \'lambda\' expression"))
 				end
 	       		else
-				throw(LispError("Wrong amount of parameter given for \'lambda\'"))
+				throw(LispError("Wrong amount of parameters given for \'lambda\'"))
 			end
 		else # Everything else must evaluate to a function
 			arg_exprs=OWL[]
@@ -350,9 +350,24 @@ end
 # =================================================
 #
 
-end # module
+# This is for debugging
+function calc(expr::AbstractString)
+	 return calc(parse(Lexer.lex(expr)))
+end
 
 # TODO: check recursive function
-# TODO: should argument list in with node check for symbol?
-# TODO: FunApp vs FunDef
-# TODO: Formal vs Actual
+println(calc("(with ( (recur (lambda (x) (
+		    if0 x 0 (recur (- x))
+)) ) ) (recur 5))"))
+
+# TODO: Ask Scott:
+# - Should argument list in with node check for symbol?
+# - FunApp vs FunDef
+# - Formal vs Actual
+
+#
+# =================================================
+#
+
+end # module
+
