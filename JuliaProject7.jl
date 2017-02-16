@@ -13,77 +13,59 @@ export parse, calc, NumVal, ClosureVal
 abstract OWL
 abstract Environment
 abstract RetVal
-
 type Num <: OWL
 	n::Real
 end
-
 type Binop <: OWL
 	op::Function
 	lhs::OWL
 	rhs::OWL
 end
-
 type Unop <: OWL
 	op::Function
 	operand::OWL
 end
-
 type If0 <: OWL
-  condition::OWL
-  zero_branch::OWL
-  nonzero_branch::OWL
+     	condition::OWL
+	zero_branch::OWL
+	nonzero_branch::OWL
 end
-
 type Binder <: OWL
-  name::Symbol
-  binding_expr::OWL
+     	name::Symbol
+	binding_expr::OWL
 end
-
 type With <: OWL
-  binders::Array{Binder}
-  body::OWL
+     	binders::Array{Binder}
+	body::OWL
 end
-
 type Id <: OWL
-  name::Symbol
+     	name::Symbol
 end
-
 type FunDef <: OWL
-  formal_parameters::Array{Symbol}
-  fun_body::OWL
+     	formal_parameters::Array{Symbol}
+	fun_body::OWL
 end
-
 type FunApp <: OWL
-  fun_expr::OWL
-  arg_exprs::Array{OWL}
+     	fun_expr::OWL
+	arg_exprs::Array{OWL}
 end
-
-# add to type hierarchy to better support return values
-
 type NumVal <: RetVal
-  n::Real
+     	n::Real
 end
-
 type ClosureVal <: RetVal
-  params::Array{Symbol}
-  body::OWL
-  env::Environment  # this is the environment at definition time
+     	params::Array{Symbol}
+	body::OWL
+	env::Environment  # this is the environment at definition time
 end
-
-# Definitions for environment data structures
-
 type mtEnv <: Environment
 end
-
 type SymVal <: OWL
-  name::Symbol
-  value::RetVal
+     	name::Symbol
+	value::RetVal
 end
-
 type CEnvironment <: Environment
-  symvals::Array{SymVal}
-  parent::Environment
+     	symvals::Array{SymVal}
+	parent::Environment
 end
 
 #
@@ -91,18 +73,17 @@ end
 #
 
 function collatz(n::Real)
-  return collatz_helper(n, 0)
+	return collatz_helper(n, 0)
 end
-
 function collatz_helper(n::Real, num_iters::Int)
-  if n == 1
-    return num_iters
-  end
-  if mod(n,2)==0
-    return collatz_helper(n/2, num_iters+1)
-  else
-    return collatz_helper(3*n+1, num_iters+1)  
-  end
+	if n == 1
+	      	return num_iters
+	end
+	if mod(n,2)==0
+		return collatz_helper(n/2, num_iters+1)
+	else
+		return collatz_helper(3*n+1, num_iters+1)
+	end
 end
 
 #
