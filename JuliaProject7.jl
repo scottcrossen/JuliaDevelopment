@@ -98,6 +98,7 @@ op_table = Dict([	(:+,+),
 			(:mod,mod),
 			(:collatz,collatz)
 			])
+reserved_words=[:+,:-,:*,:/,:mod,:collatz,:if0,:with,:lambda]
 
 #
 # =================================================
@@ -109,11 +110,10 @@ function parse(expr::Real)
 end
 # Parse things with type Id
 function parse(expr::Symbol)
-	key_words=[:+,:-,:*,:/,:mod,:collatz,:if0,:with,:lambda]
-	if expr in key_words
-	   	throw(LispError("Key words not allowed as Ids."))
+	if !(expr in reserved_words) # Make sure the word is not reserved
+		return Id(expr)
 	else
-		return Id(expr) # TODO: Check reservered words
+	   	throw(LispError("Symbol \'$expr\' is a reserved word"))
 	end
 end
 # When an array is encountered use this
@@ -127,133 +127,109 @@ function parse(expr::Array{Any})
 			   	if op_symbol != :collatz # Only the collatz operator needs 1 argument.
 				   	return Binop(op_table[op_symbol], parse(expr[2]), parse(expr[3]))
 				else
-					throw(LispError("Too many operands")) # Throws if 'collatz' is called with more than one argument.
+					throw(LispError("Too many parameters given for \'$op_symbol\'")) # Throws if 'collatz' is called with more than one argument.
 				end
 			elseif length(expr) == 2
 			       	if op_symbol == :- || op_symbol == :collatz # These are the only two allowed 1-arg symbols
 				   	return Unop(op_table[op_symbol], parse(expr[2]))
 				else
-					throw(LispError("Not enough operands")) # Throw this if not uniary operator
+					throw(LispError("Not enough parameters given for \'$op_symbol\'")) # Throw this if not uniary operator
 				end
 			else
-				throw(LispError("Wrong amount of params!")) # Throw this if not correct arg length
+				throw(LispError("Wrong amount of parameters given for \'$op_symbol\'")) # Throw this if not correct arg length
 			end
-			# handle new operations and ast elements seperately
+			# Handle non-binary/uniary operators and AST elements seperately
 		elseif op_symbol==:if0
-		        if length(expr)==4
-				test_case=parse(expr[2])
-				then_branch=parse(expr[3])
-				else_branch=parse(expr[4])
-				return If0(test_case, then_branch, else_branch)
+		        if length(expr)==4 # Verify correct input length
+				return If0(parse(expr[2]), parse(expr[3]), parse(expr[4])) # Good Input gives good return
+				# In case it isn't clear, 'If0' is a node in the AST and has a type defined for it.
 			else
-				throw(LispError("Invalid \'If0\' syntax"))
+				throw(LispError("Wrong amount of parameter given for \'If0\'"))
 			end
 		elseif op_symbol == :with
-	       	        if length(expr) == 3
-		   	   	binding_exprs=expr[2]
-				if no_dups(binding_exprs)
+	       	        if length(expr) == 3 # Verify correct argument length
+		   	   	binding_exprs=expr[2] # This should be an array of 'pairs'
+				if no_dups(binding_exprs) # Check to make sure there's no duplicates in the binders
 					binders=Binder[]
-					for i in 1:size(binding_exprs,1)
-				      	       push!(binders, Binder(binding_exprs[i][1], parse(binding_exprs[i][2])))
+					for i in 1:size(binding_exprs,1) # Go through list and bind values
+				      	       push!(binders, Binder(binding_exprs[i][1], parse(binding_exprs[i][2]))) # Evaluate/parse all bindings
 					end
-					body = parse(expr[3])
-					return With(binders, body)
+					return With(binders, parse(expr[3])) # The third element is the actual body
+					# We'll handle the 'With' node in the AST in the calc statement
 				else
-					throw(LispError("Duplicate symbols in with statement."))
+					throw(LispError("Duplicate symbols in \'with\' statement"))
 				end
 			else
-				throw(LispError("Invalid \'with\' syntax"))
+				throw(LispError("Wrong amount of parameter given for \'with\'"))
 			end
 		elseif op_symbol == :lambda
-	       	        if length(expr) == 3
-		   	   	if no_dups(expr[2])
-					return FunDef(expr[2],parse(expr[3]))
+	       	        if length(expr) == 3 # Verify correct argument length
+		   	   	if no_dups(expr[2]) # Make sure the arguments aren't duplicated
+					return FunDef(expr[2],parse(expr[3])) # elements: 2- argument list. 3-function body
 				else
-					throw(LispError("Duplicate symbols in lambda expression"))
+					throw(LispError("Duplicate symbols in \'lambda\' expression"))
 				end
 	       		else
-				throw(LispError("Invalid \'lambda\' syntax"))
+				throw(LispError("Wrong amount of parameter given for \'lambda\'"))
 			end
-		else
-			fun_expr=parse(op_symbol)
+		else # Everything else must evaluate to a function
 			arg_exprs=OWL[]
 			for i in 2:size(expr,1)
 		      	      	push!(arg_exprs, parse(expr[i]))
 			end
-			return FunApp(fun_expr, arg_exprs)
+			return FunApp(parse(op_symbol), arg_exprs) # The op symbol isn't a symbol. It's a function expression
 		end
 	else
-		throw(LispError("No parameters"));
+		throw(LispError("No parameters given: Empty array."));
 	end
 end
 # Catch all other parse types.
 function parse(expr::Any)
-	throw(LispError("Invalid type $expr"))
+	throw(LispError("Invalid type \'$expr\'"))
 end
-# check for duplicate symbols in with statement
+# This is the helper function that checks for duplicate symbols in with and lambda statements
 function no_dups(exprs::Array{Any})
 	if length(exprs) > 0
   	   	syms = Any[]
-		if typeof(exprs[1]) == Array{Any,1}
+		if typeof(exprs[1]) == Array{Any,1} # With nodes should have this
     	   		 for i in 1:size(exprs,1)
-      		      	 	if in(exprs[i][1], syms)
-        		    	      	return false
+			       	if typeof(exprs[i][1]) != Symbol
+				   	throw(LispError("Must use symbols for binding expressions"))
+      		      	 	elseif in(exprs[i][1], syms) # Check for duplicates of partial forward-list
+        		    	      	return false # Duplicate encountered
 				else
-					push!(syms, exprs[i][1])
+					push!(syms, exprs[i][1]) # Push good symbols
 			 	end
 			end
 			return true
-		elseif typeof(exprs[1]) == Symbol
+		elseif typeof(exprs[1]) == Symbol # Used in lambda nodes
     	       	        for i in 1:size(exprs,1)
-      		      	      	if typeof(exprs[i]) != Symbol
-        		    	   	throw(LispError("Must use symbols."))
-				elseif in(exprs[i], syms)
-			    	        return false
+      		      	      	if typeof(exprs[i]) != Symbol # Make sure we're using symbols
+        		    	   	throw(LispError("Must use symbols for single-dim argument lists."))
+				elseif in(exprs[i], syms) # Check for duplicates
+			    	        return false # Duplicate encountered
 			 	else
-					push!(syms, exprs[i])
+					push!(syms, exprs[i]) # All is good in the hood.
 			 	end
 			end
 			return true
 		else
-			throw(LispError("Improper format. Missing parenthesis."))
+			throw(LispError("Improper format. Probably missing parentheses."))
 		end
 	else
-    	   	return true
+    	   	return true # No need to throw error or even check. Empty lists are okay.
   	end
 end
-# default
+# Default behavior to catch incorrect format. Throw error if it's not a list
 function no_dups(exprs::Any)
-	throw(LispError("Improper format. Expected array."))
+	throw(LispError("Improper format. Array expected."))
 end
 
 #
 # =================================================
 #
 
-# check for symbol name in environment array
-function hasSymVal(symvals::Array{SymVal}, name::Symbol)
-	for i in 1:size(symvals,1)
-	      	 if symvals[i].name == name
-	      	    	 return true
-		 end
-	end
-	return false
-end
-# get value associated with symbol name
-function getValue(symvals::Array{SymVal}, name::Symbol)
-	 for i in 1:size(symvals,1)
-	       	 if symvals[i].name == name
-		    	 return symvals[i].value
-		 end
-	 end
-	 throw(LispError("Should not have gotten here (getValue)."))
-end
-
-#
-# =================================================
-#
-
-# Calculate the root abstract syntax tree
+# Calculate the basic OWL/root abstract syntax tree
 function calc(ast::OWL)
 	 return calc(ast, mtEnv())
 end
@@ -262,95 +238,112 @@ function calc(owl::Num, env::Environment)
 	 return NumVal(owl.n)
 end
 # Handle binary operations as in the last lab
-function calc(owl::Binop, env::Environment)
-	 left = calc(owl.lhs, env)
+function calc(owl::Binop, env::Environment) # The environment will just be used on calculating either side.
+	 left = calc(owl.lhs, env) 
 	 right = calc(owl.rhs, env)
-	 # check for valid syntax
-	 if typeof(left) == NumVal && typeof(right) == NumVal
-	    	 if (owl.op == /) && right.n == 0
-		    	  throw(LispError("Cannot divide by zero."))
+	 if typeof(left) == NumVal && typeof(right) == NumVal # Make sure things can evaluated in the calcs
+	    	 if (owl.op == /) && right.n == 0 # Make sure that we can't devide by zero
+		    	  throw(LispError("Cannot divide by zero in binary op"))
 		 else
-			  return NumVal(owl.op(left.n, right.n))
+			  return NumVal(owl.op(left.n, right.n)) # Return correct calculation
 		 end
 	 else
-		 throw(LispError("Type Error: Invalid BinOp types."))
+		 throw(LispError("Invalid binary op types did not evaluate correctly"))
 	 end
 end
-# Unary operations
-function calc(owl::Unop, env::Environment)
-	 unary = calc(owl.operand, env)
-	 if typeof(unary) == NumVal
-		 if owl.op == collatz && unary.n <= 0
-			  throw(LispError("Cannot perform collatz on $unary."))
-		 else
+# Handle bnary operations in a similar fashion to binary operations
+function calc(owl::Unop, env::Environment) # As in Binop, the environment is just used to calculate the expression recursively
+	 unary = calc(owl.operand, env) # Calculate the expression
+	 if typeof(unary) == NumVal # Make sure it evaluated to a value
+		 if !(owl.op == collatz && unary.n <= 0) # Check to make sure the collatz function is called with a correct input.
 			  return NumVal(owl.op(unary.n))
-		 end
-	 else
-		 throw(LispError("Type Error: Invalid UnOp types."))
-	 end
-end
-# If0
-function calc(owl::If0, env::Environment)
-	 cond = calc(owl.condition, env)
-	 if typeof(cond) == NumVal
-	    	 if cond.n == 0
-		    	  return calc(owl.zero_branch, env)
 		 else
-			  return calc(owl.nonzero_branch, env)
+			  throw(LispError("Cannot perform collatz on \'$unary\'"))
 		 end
 	 else
-		 throw(LispError("Cannot check If0 on value $cond."))
+		 throw(LispError("Invalid uninary op types did not evaluate correctly"))
 	 end
 end
-# Id
-function calc(owl::Id, env::Environment)
-	 if env == mtEnv()
-	    	 throw(LispError("Could not find symbol $owl."))
-	 elseif hasSymVal(env.symvals, owl.name)
-	 	 return getValue(env.symvals, owl.name)
+# Handle If0 nodes
+function calc(owl::If0, env::Environment) # Pass in the environment as always
+	 cond = calc(owl.condition, env)
+	 if typeof(cond) == NumVal # Make sure that the condition calculated correctly
+	    	 if cond.n == 0
+		    	  return calc(owl.zero_branch, env) # This is the 'then' branch
+		 else
+			  return calc(owl.nonzero_branch, env) # This is the 'else' branch
+		 end
 	 else
-		 return calc(owl, env.parent)
+		 throw(LispError("Invalid \'If0\' type with value \'$cond\'."))
 	 end
 end
-# With
+# Handle Id/Symbols in grammer
+function calc(owl::Id, env::Environment)
+	 if env == mtEnv() # Check to see if it's an mpty environment.
+	    	 throw(LispError("Could not find symbol \'$owl\'"))
+	 elseif hasSymVal(env.symvals, owl.name) # See helper function
+	 	 return getValue(env.symvals, owl.name) # Return symbol value.
+	 else
+		 return calc(owl, env.parent) # I believe I need this for recursion
+	 end
+end
+# Handle With nodes
 function calc(owl::With, env::Environment)
-	 symvals = SymVal[]
+	 symvals = SymVal[] # The With node has a bunch of sumbols we need to evaluate.
 	 for i in 1:size(owl.binders,1)
 	       	 push!(symvals, SymVal(owl.binders[i].name, calc(owl.binders[i].binding_expr, env)))
 	 end
-	 extended_env = CEnvironment(symvals, env)
-	 return calc(owl.body, extended_env)
+	 return calc(owl.body, CEnvironment(symvals, env)) # Extend the environment and pass it on.
 end
-# FunDef
+# Define the FunDef Node and pass of the closure
 function calc(owl::FunDef, env::Environment)
-	 return ClosureVal(owl.formal_parameters, owl.fun_body, env)
+	 return ClosureVal(owl.formal_parameters, owl.fun_body, env) # super simple I know.
 end
-# FunApp
+# This is the FunApp node
 function calc( owl::FunApp, env::Environment )
-	 # the function expression should result in a ClosureVal
+	 # The function expression should result in a ClosureVal
 	 the_closure = calc(owl.fun_expr, env)
-	 if typeof(the_closure) == ClosureVal
-	    	 if length(owl.arg_exprs) != length(the_closure.params)
-		    	  throw(LispError("Number of parameters does not match in function call/declaration."))
+	 if typeof(the_closure) == ClosureVal # Check for correct evaluation
+	    	 if length(owl.arg_exprs) == length(the_closure.params) # These two lists should be equal.
+	 	    	  # Extend the current environment by binding the actual parameters to the formal parameters
+	 	 	  symvals = SymVal[] # Build array
+	 	 	  for i in 1:size(owl.arg_exprs,1) # Iterate through array and push calcualted symbols
+	       	       	      	   push!(symvals, SymVal(the_closure.params[i], calc(owl.arg_exprs[i], env)))
+	 	 	  end
+	      	 	  return calc(the_closure.body, CEnvironment(symvals, the_closure.env)) # Calculate new environment and return
+		 else
+		    	  throw(LispError("Number of parameters and arguments does not match in function call/declaration."))
 	 	 end
-	 	 # extend the current environment by binding the actual parameters to the formal parameters
-	 	 symvals = SymVal[]
-	 	 for i in 1:size(owl.arg_exprs,1)
-	       	       	  push!(symvals, SymVal(the_closure.params[i], calc(owl.arg_exprs[i], env)))
-	 	 end
-	 	 new_env = CEnvironment(symvals, the_closure.env)
-	 	 rval = calc(the_closure.body, new_env)
-	      	 return rval
 	 else
-		 throw(LispError("fun_expr did not return a ClosureVal."))
+		 throw(LispError("Invalid type did not return closure"))
 	 end
 end
-# default case
+# Default calc case
 function calc(owl::Any)
-	 throw(LispError("Cannot calculate."))
+	 throw(LispError("Cannot calculate unknown type"))
 end
+# This could also happen with environments.
 function calc(owl::Any, env::Environment)
-	 throw(LispError("Cannot calculate."))
+	 throw(LispError("Cannot calculate unknown type"))
+end
+# Helper function to check for symbol name in environment array
+function hasSymVal(symvals::Array{SymVal}, name::Symbol)
+	for i in 1:size(symvals,1) # Iterate through and find
+	       	 if symvals[i].name == name
+	       	    	 return true # Found
+		 end
+	end
+	return false
+	# return (name in symvals) # this won't work with different types fyi
+end
+# Helper function to get value associated with symbol name
+function getValue(symvals::Array{SymVal}, name::Symbol)
+	 for i in 1:size(symvals,1)
+	       	 if symvals[i].name == name
+		    	 return symvals[i].value
+		 end
+	 end
+	 throw(LispError("Symbol with \'$name\' not found - Good job on getting here though"))
 end
 
 #
@@ -358,3 +351,8 @@ end
 #
 
 end # module
+
+# TODO: check recursive function
+# TODO: should argument list in with node check for symbol?
+# TODO: FunApp vs FunDef
+# TODO: Formal vs Actual
