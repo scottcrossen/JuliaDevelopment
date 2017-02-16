@@ -265,32 +265,107 @@ end
 # =================================================
 #
 
-# Call number and return
-function calc( e::Num )
-	return e.n
+# Calculate the root abstract syntax tree
+function calc(ast::OWL)
+	 return calc(ast, mtEnv())
 end
-# Apply binomial operator
-function calc(e::Binop)
-	left = calc(e.lhs)
-	right = calc(e.rhs)
-	if (e.op == /) && (right == 0)
-		throw(LispError("Cannot divide by zero.")) # Make sure no errors
-	else
-		return e.op(left, right)
-	end
+# Base case is a number or closure which we will return
+function calc(owl::Num, env::Environment)
+	 return NumVal(owl.n)
 end
-# Apply uniary operator
-function calc(e::Unop)
-	unary = calc(e.operand)
-	if (e.op == collatz && unary <= 0) # Check to make sure collatz is a valid input.
-		throw(LispError("Cannot perform collatz on number $unary"))
-	else
-		return e.op(calc(e.operand))
-	end
+# Handle binary operations as in the last lab
+function calc(owl::Binop, env::Environment)
+	 left = calc(owl.lhs, env)
+	 right = calc(owl.rhs, env)
+	 # check for valid syntax
+	 if typeof(left) == NumVal && typeof(right) == NumVal
+	    	 if (owl.op == /) && right.n == 0
+		    	  throw(LispError("Cannot divide by zero."))
+		 else
+			  return NumVal(owl.op(left.n, right.n))
+		 end
+	 else
+		 throw(LispError("Type Error: Invalid BinOp types."))
+	 end
 end
-# Catch all other calc errors
-function calc(e::Any)
+# Unary operations
+function calc(owl::Unop, env::Environment)
+	 unary = calc(owl.operand, env)
+	 if typeof(unary) == NumVal
+		 if owl.op == collatz && unary.n <= 0
+			  throw(LispError("Cannot perform collatz on $unary."))
+		 else
+			  return NumVal(owl.op(unary.n))
+		 end
+	 else
+		 throw(LispError("Type Error: Invalid UnOp types."))
+	 end
+end
+# If0
+function calc(owl::If0, env::Environment)
+	 cond = calc(owl.condition, env)
+	 if typeof(cond) == NumVal
+	    	 if cond.n == 0
+		    	  return calc(owl.zero_branch, env)
+		 else
+			  return calc(owl.nonzero_branch, env)
+		 end
+	 else
+		 throw(LispError("Cannot check If0 on value $cond."))
+	 end
+end
+# Id
+function calc(owl::Id, env::Environment)
+	 if env == mtEnv()
+	    	 throw(LispError("Could not find symbol $owl."))
+	 elseif hasSymVal(env.symvals, owl.name)
+	 	 return getValue(env.symvals, owl.name)
+	 else
+		 return calc(owl, env.parent)
+	 end
+end
+# With
+function calc(owl::With, env::Environment)
+	 symvals = SymVal[]
+	 for i in 1:size(owl.binders,1)
+	       	 push!(symvals, SymVal(owl.binders[i].name, calc(owl.binders[i].binding_expr, env)))
+	 end
+	 extended_env = CEnvironment(symvals, env)
+	 return calc(owl.body, extended_env)
+end
+# FunDef
+function calc(owl::FunDef, env::Environment)
+	 return ClosureVal(owl.formal_parameters, owl.fun_body, env)
+end
+# FunApp
+function calc( owl::FunApp, env::Environment )
+	 # the function expression should result in a ClosureVal
+	 the_closure = calc(owl.fun_expr, env)
+	 if typeof(the_closure) == ClosureVal
+	    	 if length(owl.arg_exprs) != length(the_closure.params)
+		    	  throw(LispError("Number of parameters does not match in function call/declaration."))
+	 end
+	 # extend the current environment by binding the actual parameters to the formal parameters
+	 symvals = SymVal[]
+	 for i in 1:size(owl.arg_exprs,1)
+	       	 push!(symvals, SymVal(the_closure.params[i], calc(owl.arg_exprs[i], env)))
+	 end
+	 #actual_parameter = calc(owl.arg_expr, env)
+	 #formal_parameter = the_closure.param
+	 #new_env = CEnvironment(formal_parameter, actual_parameter, the_closure.env)
+	 new_env = CEnvironment(symvals, the_closure.env)
+	 rval = calc(the_closure.body, new_env)
+	      	 return rval
+		 else
+    throw(LispError("fun_expr did not return a ClosureVal."))
+  end
+end
+# default case
+function calc(owl::Any)
 	throw(LispError("Cannot calculate."))
+end
+function calc(owl::Any, env::Environment)
+  throw(LispError("Cannot calculate."))
 end
 
 #
