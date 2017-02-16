@@ -360,9 +360,8 @@ println(calc("(with ( (recur (lambda (x) (
 		    if0 x 0 (recur (- x))
 )) ) ) (recur 5))"))
 
-# TODO: Ask Scott:
+# TODO: Ask ScottyMack:
 # - Should argument list in with node check for symbol?
-# - FunApp vs FunDef
 # - Formal vs Actual
 
 #
