@@ -351,18 +351,18 @@ end
 #
 
 # This is for debugging
-function calc(expr::AbstractString)
-	 return calc(parse(Lexer.lex(expr)))
-end
-
-# TODO: check recursive function
-println(calc("(with ( (recur (lambda (x) (
-		    if0 x 0 (recur (- x))
-)) ) ) (recur 5))"))
-
-# TODO: Ask ScottyMack:
-# - Should argument list in with node check for symbol?
-# - Formal vs Actual
+#function calc(expr::AbstractString)
+#	 return calc(parse(Lexer.lex(expr)))
+#end
+#
+## TODO: check recursive function
+#println(calc("(with ( (recur (lambda (x) (
+#		    if0 x 0 (recur (- x))
+#)) ) ) (recur 5))"))
+#
+## TODO: Ask ScottyMack:
+## - Should argument list in with node check for symbol?
+## - Formal vs Actual
 
 #
 # =================================================
