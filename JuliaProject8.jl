@@ -16,28 +16,28 @@ abstract RetVal
 type Num <: OWL
 	n::Real
 end
+type NumVal <: RetVal
+     	n::Real
+end
 type Binop <: OWL
 	op::Function
 	lhs::OWL
 	rhs::OWL
 end
+type Plus <: OWL
+	operands::Array{OWL}
+end
 type Unop <: OWL
 	op::Function
 	operand::OWL
 end
-type Plus <: OWL
-	operands::Array{OWL}
-end
-type And <: OWL
-	operands::Array{OWL}
+type Id <: OWL
+     	name::Symbol
 end
 type If0 <: OWL
      	condition::OWL
 	zero_branch::OWL
 	nonzero_branch::OWL
-end
-type Id <: OWL
-     	name::Symbol
 end
 type Binder <: OWL
      	name::Id
@@ -55,13 +55,13 @@ type FunApp <: OWL
      	fun_expr::OWL
 	arg_exprs::Array{OWL}
 end
-type NumVal <: RetVal
-     	n::Real
-end
 type ClosureVal <: RetVal
      	params::Array{Id}
 	body::OWL
 	env::Environment  # this is the environment at definition time
+end
+type And <: OWL
+	operands::Array{OWL}
 end
 type mtEnv <: Environment
 end
@@ -265,73 +265,62 @@ end
 #
 
 # Analyze number structure
-function analyze( owl::Num )
+function analyze(owl::Num)
 	return owl
 end
 # Analyze binomial operator tree
-function analyze( owl::Binop )
-	return Binop( owl.op, analyze( owl.lhs ), analyze( owl.rhs ) )
+function analyze(owl::Binop)
+	return Binop(owl.op, analyze(owl.lhs), analyze(owl.rhs)) # Pass on the recursion
 end
-
+# Handle plus nodes
+function analyze(owl::Plus)
+	if length(owl.operands) == 2 # Is this binomial?
+		return Binop(+, analyze(owl.operands[1]), analyze(owl.operands[2]))
+	else
+		return Binop(+, analyze(owl.operands[1]), analyze(Plus(owl.operands[2:end])))
+	end
+end
 # Handle Uni-operator trees
-function analyze( owl::Unop )
-	return Unop( owl.op, analyze( owl.operand ) )
+function analyze(owl::Unop) # Just pass on the recursion
+	return Unop(owl.op, analyze(owl.operand))
 end
-
+# Handle id nodes
+function analyze(owl::Id) # Just pass on the recursion
+	return owl
+end
 # Handle if0 nodes
-function analyze( owl::If0 )
-	return If0( analyze( owl.condition ), analyze( owl.zero_branch ), analyze( owl.nonzero_branch ) )
+function analyze(owl::If0) # Just pass on the recursion
+	return If0(analyze(owl.condition), analyze(owl.zero_branch), analyze(owl.nonzero_branch))
 end
-
 # Handle with nodes
-function analyze( owl::With )
+function analyze(owl::With)
 	syms = Id[]
 	exprs = OWL[]
-	for i in 1:size(owl.binders,1)
-	     	push!( syms, owl.binders[i].name)
-		push!( exprs, owl.binders[i].binding_expr)
+	for i in 1:size(owl.binders,1) # Load lists so we can simplify them and recurse on them
+	     	push!(syms, owl.binders[i].name)
+		push!(exprs, owl.binders[i].binding_expr)
 	end
 	return FunApp(FunDef(syms, analyze(owl.body)), map(analyze, exprs) )
 end
-
-# Handle id nodes
-function analyze( owl::Id )
-	return owl
-end
-
 # Handle function definition nodes
-function analyze( owl::FunDef )
-	return FunDef( owl.formal_parameters, analyze( owl.fun_body ) )
+function analyze(owl::FunDef) # Just pass on the recursion
+	return FunDef(owl.formal_parameters, analyze(owl.fun_body))
 end
-
 # Handle function application nodes
-function analyze( owl::FunApp )
-	return FunApp( analyze( owl.fun_expr ), map( analyze, owl.arg_exprs ) )
+function analyze(owl::FunApp) # Just pass on the recursion
+	return FunApp(analyze(owl.fun_expr), map(analyze, owl.arg_exprs))
 end
-
-# Handle plus nodes
-function analyze( owl::Plus )
-	if length(owl.operands) == 2
-		return Binop( +, analyze(owl.operands[1]), analyze(owl.operands[2]) )
-	else
-		dimPlus = Plus( owl.operands[2:end] )
-		return Binop( +, analyze(owl.operands[1]), analyze(dimPlus) )
-	end
-end
-
 # Handle and nodes
-function analyze( owl::And )
-	if length(owl.operands) == 1
-		return If0( analyze(owl.operands[1]), Num( 0 ), Num( 1 ) )
+function analyze(owl::And)
+	if length(owl.operands) == 1 # It shouldn't ever return one on a root call. It will on recursion though.
+		return If0(analyze(owl.operands[1]), Num(0), Num(1))
 	else
-		dimAnd = And( owl.operands[2:end] )
-		return If0( analyze(owl.operands[1]), Num( 0 ), analyze(dimAnd) )
+		return If0(analyze(owl.operands[1]), Num(0), analyze(And(owl.operands[2:end])))
 	end
 end
-
 # Default function call
-function analyze( owl::OWL )
-	throw( LispError( "Unkown node!" ) )
+function analyze(owl::OWL) # Should never get here. Throw error.
+	throw(LispError("Unkown node!"))
 end
 
 #
@@ -458,10 +447,10 @@ end
 # =================================================
 #
 
-# This is for debugging
-function calc(expr::AbstractString)
-	 return calc(parse(Lexer.lex(expr)))
-end
+## This is for debugging
+#function calc(expr::AbstractString)
+#	 return calc(parse(Lexer.lex(expr)))
+#end
 
 ## TODO: check recursive function
 #println(calc("(with ( (recur (lambda (x) (
