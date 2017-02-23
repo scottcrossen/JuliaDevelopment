@@ -97,13 +97,14 @@ end
 #
 
 # All operators will be stored in this dicitonary
-op_table = Dict([	(:+,+),
+op_table = Dict([
+			(:+,+),
 			(:-,-),
 			(:*,*),
 			(:/,/),
 			(:mod,mod),
 			(:collatz,collatz)
-			])
+		])
 reserved_words=[:+,:-,:*,:/,:mod,:collatz,:if0,:with,:lambda, :and] # added new reserved word
 
 #
