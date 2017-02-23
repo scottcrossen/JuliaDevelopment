@@ -25,24 +25,30 @@ type Unop <: OWL
 	op::Function
 	operand::OWL
 end
+type Plus <: OWL
+	operands::Array{OWL}
+end
+type And <: OWL
+	operands::Array{OWL}
+end
 type If0 <: OWL
      	condition::OWL
 	zero_branch::OWL
 	nonzero_branch::OWL
 end
-type Binder <: OWL
+type Id <: OWL
      	name::Symbol
+end
+type Binder <: OWL
+     	name::Id
 	binding_expr::OWL
 end
 type With <: OWL
      	binders::Array{Binder}
 	body::OWL
 end
-type Id <: OWL
-     	name::Symbol
-end
 type FunDef <: OWL
-     	formal_parameters::Array{Symbol}
+     	formal_parameters::Array{Id}
 	fun_body::OWL
 end
 type FunApp <: OWL
@@ -53,25 +59,19 @@ type NumVal <: RetVal
      	n::Real
 end
 type ClosureVal <: RetVal
-     	params::Array{Symbol}
+     	params::Array{Id}
 	body::OWL
 	env::Environment  # this is the environment at definition time
 end
 type mtEnv <: Environment
 end
 type SymVal <: OWL
-     	name::Symbol
+     	name::Id
 	value::RetVal
 end
 type CEnvironment <: Environment
      	symvals::Array{SymVal}
 	parent::Environment
-end
-type Plus <: OWL
-	operands::Array{OWL}
-end
-type And <: OWL
-	operands::Array{OWL}
 end
 
 #
@@ -174,8 +174,16 @@ function parse(expr::Array{Any})
 		   	   	binding_exprs=expr[2] # This should be an array of 'pairs'
 				if no_dups(binding_exprs) # Check to make sure there's no duplicates in the binders
 					binders=Binder[]
-					for i in 1:size(binding_exprs,1) # Go through list and bind values
-				      	       push!(binders, Binder(binding_exprs[i][1], parse(binding_exprs[i][2]))) # Evaluate/parse all bindings
+					if typeof(binding_exprs[1]) == Array{Any,1}
+					       	for i in 1:size(binding_exprs,1) # Go through list and bind values
+						      	if length(binding_exprs[i]) == 2
+				      	       	       	  	push!(binders, Binder(parse(binding_exprs[i][1]), parse(binding_exprs[i][2]))) # Evaluate/parse all bindings
+							else
+								throw(LispError("Must have one symbol per one expression"))
+							end
+						end
+					else
+						throw(LispError("Incorrect syntax on with statement"))
 					end
 					return With(binders, parse(expr[3])) # The third element is the actual body
 					# We'll handle the 'With' node in the AST in the calc statement
@@ -251,7 +259,94 @@ end
 function no_dups(exprs::Any)
 	throw(LispError("Improper format. Array expected."))
 end
-1
+
+#
+# =================================================
+#
+
+# This is the analyze function
+
+# Num
+function analyze( owl::Num )
+	return owl
+end
+
+# Binop
+function analyze( owl::Binop )
+	return Binop( owl.op, analyze( owl.lhs ), analyze( owl.rhs ) )
+end
+
+# Unop
+function analyze( owl::Unop )
+	return Unop( owl.op, analyze( owl.operand ) )
+end
+
+# If0
+function analyze( owl::If0 )
+	return If0( analyze( owl.condition ), analyze( owl.zero_branch ), analyze( owl.nonzero_branch ) )
+end
+
+# With
+function analyze( owl::With )
+	fd = FunDef( getSyms(owl.binders), analyze( owl.body ) )
+	return FunApp( fd, map(analyze, getBindingExprs(owl.binders)) )
+end
+
+# Id
+function analyze( owl::Id )
+	return owl
+end
+
+# FunDef
+function analyze( owl::FunDef )
+	return FunDef( owl.formal_parameters, analyze( owl.fun_body ) )
+end
+
+# FunApp
+function analyze( owl::FunApp )
+	return FunApp( analyze( owl.fun_expr ), map( analyze, owl.arg_exprs ) )
+end
+
+# Plus
+function analyze( owl::Plus )
+	if length(owl.operands) == 2
+		return Binop( +, analyze(owl.operands[1]), analyze(owl.operands[2]) )
+	else
+		dimPlus = Plus( owl.operands[2:end] )
+		return Binop( +, analyze(owl.operands[1]), analyze(dimPlus) )
+	end
+end
+
+# And
+function analyze( owl::And )
+	if length(owl.operands) == 1
+		return If0( analyze(owl.operands[1]), Num( 0 ), Num( 1 ) )
+	else
+		dimAnd = And( owl.operands[2:end] )
+		return If0( analyze(owl.operands[1]), Num( 0 ), analyze(dimAnd) )
+	end
+end
+
+# default
+function analyze( owl::OWL )
+	throw( LispError( "Unkown node!" ) )
+end
+function getSyms( binders::Array{Binder} )
+	syms = Id[];
+	for i in 1:size(binders,1)
+		push!( syms, binders[i].name)
+	end
+	return syms
+end
+
+function getBindingExprs( binders::Array{Binder} )
+	exprs = OWL[]
+	for i in 1:size(binders,1)
+		push!( exprs, binders[i].binding_expr )
+	end
+	return exprs
+end
+
 #
 # =================================================
 #
@@ -378,10 +473,10 @@ end
 #
 
 # This is for debugging
-#function calc(expr::AbstractString)
-#	 return calc(parse(Lexer.lex(expr)))
-#end
-#
+function calc(expr::AbstractString)
+	 return calc(parse(Lexer.lex(expr)))
+end
+
 ## TODO: check recursive function
 #println(calc("(with ( (recur (lambda (x) (
 #		    if0 x 0 (recur (- x))
