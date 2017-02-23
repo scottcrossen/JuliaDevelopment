@@ -237,6 +237,8 @@ function no_dups(exprs::Array{Any})
     	   		 for i in 1:size(exprs,1)
 			       	if typeof(exprs[i][1]) != Symbol
 				   	throw(LispError("Must use symbols for binding expressions"))
+				elseif in(exprs[i][1], reserved_words) # Check for reserved words
+				        throw(LispError("Reserved word \'$exprs[i][1]\' cannot be used in binding expression."))
       		      	 	elseif in(exprs[i][1], syms) # Check for duplicates of partial forward-list
         		    	      	return false # Duplicate encountered
 				else
@@ -248,6 +250,8 @@ function no_dups(exprs::Array{Any})
     	       	        for i in 1:size(exprs,1)
       		      	      	if typeof(exprs[i]) != Symbol # Make sure we're using symbols
         		    	   	throw(LispError("Must use symbols for single-dim argument lists."))
+				elseif in(exprs[i], reserved_words) # Check for reserved words
+				        throw(LispError("Reserved word \'$exprs[i]\' cannot be used in argument lists."))
 				elseif in(exprs[i], syms) # Check for duplicates
 			    	        return false # Duplicate encountered
 			 	else
