@@ -264,50 +264,52 @@ end
 # =================================================
 #
 
-# This is the analyze function
-
-# Num
+# Analyze number structure
 function analyze( owl::Num )
 	return owl
 end
-
-# Binop
+# Analyze binomial operator tree
 function analyze( owl::Binop )
 	return Binop( owl.op, analyze( owl.lhs ), analyze( owl.rhs ) )
 end
 
-# Unop
+# Handle Uni-operator trees
 function analyze( owl::Unop )
 	return Unop( owl.op, analyze( owl.operand ) )
 end
 
-# If0
+# Handle if0 nodes
 function analyze( owl::If0 )
 	return If0( analyze( owl.condition ), analyze( owl.zero_branch ), analyze( owl.nonzero_branch ) )
 end
 
-# With
+# Handle with nodes
 function analyze( owl::With )
-	fd = FunDef( getSyms(owl.binders), analyze( owl.body ) )
-	return FunApp( fd, map(analyze, getBindingExprs(owl.binders)) )
+	syms = Id[]
+	exprs = OWL[]
+	for i in 1:size(owl.binders,1)
+	     	push!( syms, owl.binders[i].name)
+		push!( exprs, owl.binders[i].binding_expr)
+	end
+	return FunApp(FunDef(syms, analyze(owl.body)), map(analyze, exprs) )
 end
 
-# Id
+# Handle id nodes
 function analyze( owl::Id )
 	return owl
 end
 
-# FunDef
+# Handle function definition nodes
 function analyze( owl::FunDef )
 	return FunDef( owl.formal_parameters, analyze( owl.fun_body ) )
 end
 
-# FunApp
+# Handle function application nodes
 function analyze( owl::FunApp )
 	return FunApp( analyze( owl.fun_expr ), map( analyze, owl.arg_exprs ) )
 end
 
-# Plus
+# Handle plus nodes
 function analyze( owl::Plus )
 	if length(owl.operands) == 2
 		return Binop( +, analyze(owl.operands[1]), analyze(owl.operands[2]) )
@@ -317,7 +319,7 @@ function analyze( owl::Plus )
 	end
 end
 
-# And
+# Handle and nodes
 function analyze( owl::And )
 	if length(owl.operands) == 1
 		return If0( analyze(owl.operands[1]), Num( 0 ), Num( 1 ) )
@@ -327,24 +329,9 @@ function analyze( owl::And )
 	end
 end
 
-# default
+# Default function call
 function analyze( owl::OWL )
 	throw( LispError( "Unkown node!" ) )
-end
-function getSyms( binders::Array{Binder} )
-	syms = Id[];
-	for i in 1:size(binders,1)
-		push!( syms, binders[i].name)
-	end
-	return syms
-end
-
-function getBindingExprs( binders::Array{Binder} )
-	exprs = OWL[]
-	for i in 1:size(binders,1)
-		push!( exprs, binders[i].binding_expr )
-	end
-	return exprs
 end
 
 #
@@ -352,8 +339,7 @@ end
 #
 
 # Calculate the basic OWL/root abstract syntax tree
-function calc(ast::OWL)
-	 return calc(ast, mtEnv())
+function calc(ast::OWL)	 return calc(ast, mtEnv())
 end
 # Base case is a number or closure which we will return
 function calc(owl::Num, env::Environment)
