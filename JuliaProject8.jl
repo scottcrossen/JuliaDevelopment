@@ -1,4 +1,4 @@
-module transInt
+module TransInt
 
 push!(LOAD_PATH, ".")
 
@@ -104,7 +104,7 @@ op_table = Dict([	(:+,+),
 			(:mod,mod),
 			(:collatz,collatz)
 			])
-reserved_words=[:+,:-,:*,:/,:mod,:collatz,:if0,:with,:lambda]
+reserved_words=[:+,:-,:*,:/,:mod,:collatz,:if0,:with,:lambda, :and] # added new reserved word
 
 #
 # =================================================
@@ -141,37 +141,25 @@ function parse(expr::Array{Any})
 				else
 					throw(LispError("Not enough parameters given for \'$op_symbol\'")) # Throw this if not uniary operator
 				end
-
-
-
-# Added
-			elseif op_symbol == :+ && length(expr) != 1
-			       ops = OWL[]
-			       for i in 2:size(expr,1)
-			       	     	push!( ops, parse( expr[i] ) )
-			       end
-			       return Plus( ops )
-
-
-
+			elseif length(expr) >= 3 && op_symbol == :+ # Handle new grammer with multiple sums
+			        ops = OWL[]
+			        for i in 2:size(expr,1)
+			       	     	push!(ops, parse(expr[i]))
+			        end
+			        return Plus(ops)
 			else
 				throw(LispError("Wrong amount of parameters given for \'$op_symbol\'")) # Throw this if not correct arg length
 			end
-
-
-
-# Added
-	  	elseif op_symbol == :and
-			if length(expr) < 3
-				throw( LispError( "Cannot perform and without operands." ) )
+	  	elseif op_symbol == :and # new grammer rule for 'and'
+			if length(expr) >= 3 # Must have more than two parameters
+			   	ops = OWL[]
+				for i in 2:size(expr,1)
+			      	      	push!( ops, parse( expr[i] ) )
+				end
+				return And(ops)
+			else
+				throw( LispError( "Cannot perform 'and' operation without 2 or more operands." ) )
 			end
-			ops = OWL[]
-			for i in 2:size(expr,1)
-			      	push!( ops, parse( expr[i] ) )
-			end
-			return And( ops )
-
-
 			# Handle non-binary/uniary operators and AST elements seperately
 		elseif op_symbol==:if0
 		        if length(expr)==4 # Verify correct input length
@@ -226,14 +214,6 @@ function no_dups(exprs::Array{Any})
 	if length(exprs) > 0
   	   	syms = Any[]
 		if typeof(exprs[1]) == Array{Any,1} # With nodes should have this
-
-
-# Added
-		   	 if length(exprs[1]) == 0
-			    	return true
-			 end
-
-
     	   		 for i in 1:size(exprs,1)
 			       	if typeof(exprs[i][1]) != Symbol
 				   	throw(LispError("Must use symbols for binding expressions"))
@@ -270,7 +250,7 @@ end
 function no_dups(exprs::Any)
 	throw(LispError("Improper format. Array expected."))
 end
-
+1
 #
 # =================================================
 #
@@ -348,15 +328,15 @@ end
 # This is the FunApp node
 function calc( owl::FunApp, env::Environment )
 	 # The function expression should result in a ClosureVal
-	 the_closure = calc(owl.fun_expr, env)
-	 if typeof(the_closure) == ClosureVal # Check for correct evaluation
-	    	 if length(owl.arg_exprs) == length(the_closure.params) # These two lists should be equal.
+	 ret_closure = calc(owl.fun_expr, env)
+	 if typeof(ret_closure) == ClosureVal # Check for correct evaluation
+	    	 if length(owl.arg_exprs) == length(ret_closure.params) # These two lists should be equal.
 	 	    	  # Extend the current environment by binding the actual parameters to the formal parameters
 	 	 	  symvals = SymVal[] # Build array
 	 	 	  for i in 1:size(owl.arg_exprs,1) # Iterate through array and push calcualted symbols
-	       	       	      	   push!(symvals, SymVal(the_closure.params[i], calc(owl.arg_exprs[i], env)))
+	       	       	      	   push!(symvals, SymVal(ret_closure.params[i], calc(owl.arg_exprs[i], env)))
 	 	 	  end
-	      	 	  return calc(the_closure.body, CEnvironment(symvals, the_closure.env)) # Calculate new environment and return
+	      	 	  return calc(ret_closure.body, CEnvironment(symvals, ret_closure.env)) # Calculate new environment and return
 		 else
 		    	  throw(LispError("Number of parameters and arguments does not match in function call/declaration."))
 	 	 end
@@ -405,10 +385,6 @@ end
 #println(calc("(with ( (recur (lambda (x) (
 #		    if0 x 0 (recur (- x))
 #)) ) ) (recur 5))"))
-#
-## TODO: Ask ScottyMack:
-## - Should argument list in with node check for symbol?
-## - Formal vs Actual
 
 #
 # =================================================

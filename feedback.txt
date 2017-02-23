@@ -1,28 +1,31 @@
         Correct output:
 1. Pass
-2. Error
-3. Error
-4. ExtInt.NumVal(3)
-5. ExtInt.NumVal(1)
-6. Pass
-7. Pass
-8. Error
-9. Error
-10. ExtInt.NumVal(4)
+2. Pass
+3. Pass
+4. Pass
+5. false
+6. false
+7. TransInt.NumVal(1)
+8. TransInt.NumVal(6)
+9. TransInt.NumVal(6)
 
         Your output:
 1. Pass
-2. Error
-3. Error
-4. ExtInt.NumVal(3)
-5. ExtInt.NumVal(1)
-6. Pass
-7. Pass
-8. Error
-9. Error
-10. ExtInt.NumVal(4)
+2. Pass
+3. Pass
+4. Pass
+5. UndefVarError(:analyze)
+6. UndefVarError(:analyze)
+7. UndefVarError(:analyze)
+8. UndefVarError(:analyze)
+9. UndefVarError(:analyze)
 
         Failed tests:
+5. 1 point. false Analyze Test (with ((x 1)) x)"
+6. 1 point. false Analyze Test (and 1 2 3)
+7. 1 point. TransInt.NumVal(1) Calc Test (and 1 2)
+8. 1 point. TransInt.NumVal(6) Calc Test (+ 1 2 3)
+9. 1 point. TransInt.NumVal(6) Calc Test (* (and 1 2 3) (+ 1 2 3))
 
         Grade:
-10 out of 10
+4 out of 9
