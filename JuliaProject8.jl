@@ -58,7 +58,7 @@ end
 type ClosureVal <: RetVal
      	params::Array{Id}
 	body::OWL
-	env::Environment  # this is the environment at definition time
+	env::Environment
 end
 type And <: OWL
 	operands::Array{OWL}
