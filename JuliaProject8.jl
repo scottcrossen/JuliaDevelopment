@@ -196,7 +196,7 @@ function parse(expr::Array{Any})
 		elseif op_symbol == :lambda
 	       	        if length(expr) == 3 # Verify correct argument length
 		   	   	if no_dups(expr[2]) # Make sure the arguments aren't duplicated
-					return FunDef(expr[2],parse(expr[3])) # elements: 2- argument list. 3-function body
+					return FunDef(map(parse, expr[2]),parse(expr[3])) # elements: 2- argument list. 3-function body
 				else
 					throw(LispError("Duplicate symbols in \'lambda\' expression"))
 				end
@@ -328,7 +328,8 @@ end
 #
 
 # Calculate the basic OWL/root abstract syntax tree
-function calc(ast::OWL)	 return calc(ast, mtEnv())
+function calc(ast::OWL)
+	 return calc(ast, mtEnv())
 end
 # Base case is a number or closure which we will return
 function calc(owl::Num, env::Environment)
@@ -378,8 +379,8 @@ end
 function calc(owl::Id, env::Environment)
 	 if env == mtEnv() # Check to see if it's an mpty environment.
 	    	 throw(LispError("Could not find symbol \'$owl\'"))
-	 elseif hasSymVal(env.symvals, owl.name) # See helper function
-	 	 return getValue(env.symvals, owl.name) # Return symbol value.
+	 elseif hasSymVal(env.symvals, owl) # See helper function
+	 	 return getValue(env.symvals, owl) # Return symbol value.
 	 else
 		 return calc(owl, env.parent) # I believe I need this for recursion
 	 end
@@ -424,9 +425,9 @@ function calc(owl::Any, env::Environment)
 	 throw(LispError("Cannot calculate unknown type"))
 end
 # Helper function to check for symbol name in environment array
-function hasSymVal(symvals::Array{SymVal}, name::Symbol)
+function hasSymVal(symvals::Array{SymVal}, name::Id)
 	for i in 1:size(symvals,1) # Iterate through and find
-	       	 if symvals[i].name == name
+	       	 if symvals[i].name.name == name.name
 	       	    	 return true # Found
 		 end
 	end
@@ -434,9 +435,9 @@ function hasSymVal(symvals::Array{SymVal}, name::Symbol)
 	# return (name in symvals) # this won't work with different types fyi
 end
 # Helper function to get value associated with symbol name
-function getValue(symvals::Array{SymVal}, name::Symbol)
+function getValue(symvals::Array{SymVal}, name::Id)
 	 for i in 1:size(symvals,1)
-	       	 if symvals[i].name == name
+	       	 if symvals[i].name.name == name.name
 		    	 return symvals[i].value
 		 end
 	 end
@@ -448,15 +449,22 @@ end
 #
 
 ## This is for debugging
-#function calc(expr::AbstractString)
-#	 return calc(parse(Lexer.lex(expr)))
-#end
+function calc(expr::AbstractString)
+	 return calc(analyze(parse(Lexer.lex(expr))))
+end
 
 ## TODO: check recursive function
 #println(calc("(with ( (recur (lambda (x) (
 #		    if0 x 0 (recur (- x))
 #)) ) ) (recur 5))"))
-
+#println(analyze(parse(Lexer.lex("(with ((x 1)) x)"))))
+#println(calc("(with ((x 1)) x)"))
+#println(analyze(parse(Lexer.lex("((lambda (x) x) 1)"))))
+#println(calc("((lambda (x) x) 1)"))
+#println(analyze(parse(Lexer.lex("(with ((x 1) (y 2)) y)"))))
+#println(calc("(with ((x 1) (y 2)) y)"))
+#println(analyze(parse(Lexer.lex("((lambda (x y) y) 1 2)"))))
+#println(calc("((lambda (x y) y) 1 2)"))
 #
 # =================================================
 #
