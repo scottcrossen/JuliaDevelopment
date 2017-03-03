@@ -137,7 +137,88 @@ catch
 	println(HPInt.calc(test2))
 end
 
-test="(with ((swirl (simple_load \"./Linux.png\"))) (simple_save swirl \"output.png\"))"
+
+test="(with ((cat (simple_load \"cat_256.png\"))) (simple_save cat \"output.png\"))"
+println(testNum(@tnum()) * "Load and Save")
+try
+	interpret(test)
+catch
+	println("Failed to create image from sample code.")
+    	interpret( test)
+end
+test="(with ((cat (simple_load \"cat_256.png\"))) (simple_save (emboss cat) \"output.png\"))"
+println(testNum(@tnum()) * "Load and Save")
+try
+	interpret(test)
+catch
+	println("Failed to create image from sample code.")
+    	interpret( test)
+end
+test="(with ((cat (simple_load \"cat_256.png\"))) (simple_save (inner_shadow cat) \"output.png\"))"
+println(testNum(@tnum()) * "Load and Save")
+try
+	interpret(test)
+catch
+	println("Failed to create image from sample code.")
+    	interpret( test)
+end
+test="(with ((cat (simple_load \"cat_256.png\"))) (simple_save (drop_shadow cat) \"output.png\"))"
+println(testNum(@tnum()) * "Load and Save")
+try
+	interpret(test)
+catch
+	println("Failed to create image from sample code.")
+    	interpret( test)
+end
+test="(with ((cat (simple_load \"cat_256.png\"))) (simple_save (max 0.5 cat) \"output.png\"))"
+println(testNum(@tnum()) * "Load and Save")
+try
+	interpret(test)
+catch
+	println("Failed to create image from sample code.")
+    	interpret( test)
+end
+test="(with ((cat (simple_load \"cat_256.png\"))) (simple_save (min 0.5 cat) \"output.png\"))"
+println(testNum(@tnum()) * "Load and Save")
+try
+	interpret(test)
+catch
+	println("Failed to create image from sample code.")
+    	interpret( test)
+end
+test="(with ((cat (simple_load \"cat_256.png\"))) (simple_save (- 1 cat) \"output.png\"))"
+println(testNum(@tnum()) * "Load and Save")
+try
+	interpret(test)
+catch
+	println("Failed to create image from sample code.")
+    	interpret( test)
+end
+test="(with ((cat (simple_load \"cat_256.png\"))) (simple_save (+ cat cat) \"output.png\"))"
+println(testNum(@tnum()) * "Load and Save")
+try
+	interpret(test)
+catch
+	println("Failed to create image from sample code.")
+    	interpret( test)
+end
+test="(with ((cat (simple_load \"cat_256.png\"))) (simple_save (- cat cat) \"output.png\"))"
+println(testNum(@tnum()) * "Load and Save")
+try
+	interpret(test)
+catch
+	println("Failed to create image from sample code.")
+    	interpret( test)
+end
+test="(with ((cat (simple_load \"cat_256.png\"))) (simple_save (min (render_text \"CAT\" 40 230) cat) \"output.png\"))"
+println(testNum(@tnum()) * "Load and Save")
+try
+	interpret(test)
+catch
+	println("Failed to create image from sample code.")
+    	interpret( test)
+end
+test="(with ((cat (simple_load \"cat_256.png\"))) (simple_save (* (- 1 cat) cat) \"output.png\"))"
 println(testNum(@tnum()) * "Load and Save")
 try
 	interpret(test)
