@@ -196,14 +196,14 @@ end
 op_table = Dict([
 			(:+,+),
 			(:-,-),
-			(:*,*),
-			(:/,/),
+			(:*,.*),
+			(:/,./),
 			(:mod,mod),
 			(:collatz,collatz),
       			(:min, min),
 			(:max, max)
 		])
-reserved_words=[:+,:-,:*,:/,:mod,:collatz,:min,:max,:if0,:with,:lambda, :and, :simple_load, :simple_save, :render_text, :emboss, :drop_shadow, :inner_shadow] # added new reserved word
+reserved_words=[:+,:-,:*,:/,:.*,:./,:mod,:collatz,:min,:max,:if0,:with,:lambda, :and, :simple_load, :simple_save, :render_text, :emboss, :drop_shadow, :inner_shadow] # added new reserved word
 
 #
 # =================================================
