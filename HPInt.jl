@@ -118,70 +118,81 @@ function collatz_helper(n::Real, num_iters::Int)
 	end
 end
 # The simple_load primitive
-function simple_load(imp_path::AbstractString)
-	im= Images.load(img_path);
-	tmp=Images.separate(im);
-	d=Images.data(tmp);
-	d=d[:,:,1];
-	d=convert(Array{Float32,2},f);
-	return d
+function simple_load( img_path::AbstractString )
+  im = Images.load( img_path );
+  tmp = Images.permuteddimsview(channelview(im),(2,3,1));
+  d = Images.data( ImageMeta(tmp) );
+  d = d[:,:,1];  # just the r channel
+  d = convert( Array{Float32,2}, d );
+  return d    
 end
 # The simple_save primitive
-function simple_save(output::Array, img_path::AbstractString)
-	output[output .> 1.0]=1.0
-	output[output .< 0.0]=0.0
-	tmpc=convert(Array{UInt32,2},floor(output*255.0))
-	tmp_output=tmpc+tmpc*256+tmpc*65536+ 0xff000000
-    	c2=CairoImageSurface(transpose(tmp_output), Cairo.FORMAT_ARGB32)
-    	write_to_png(c2, img_path)
-    	return 42
+function simple_save( output::Array, img_path::AbstractString )
+    output[ output .> 1.0 ] = 1.0
+    output[ output .< 0.0 ] = 0.0
+    tmpc = convert( Array{UInt32,2}, floor(output*255.0) )
+    tmp_output =  tmpc + tmpc*256 + tmpc*65536 + 0xff000000
+    c2 = CairoImageSurface( transpose(tmp_output), Cairo.FORMAT_ARGB32 )
+    write_to_png( c2, img_path )
+    return 42
 end
 # The render_text primitive
-function render_text(text_str::AbstractString, xpos, ypos)
-	data = Matrix{UInt32}(256, 256);
-	c = CairoImageSurface( data, Cairo.FORMAT_ARGB32);
-	cr = CairoContext(c);
-	set_source_rgb(cr, 1., 1., 1.);
-	rectangle(cr, 0., 0., 256., 256.);
-	fill(cr);
-	set_source_rgb( cr, 0, 0, 0 );
-	select_font_face(cr, "Sans", Cairo.FONT_SLANT_NORMAL, Cairo.FONT_WEIGHT_BOLD);
-	set_font_size(cr, 90.0);
-	move_to(cr, xpos, ypos);
-	show_text(cr, text_str);
-	# tmp is an Array{UInt32,2}
-	tmp = cr.surface.data;
-	# grab just the blue channel, and convert the array to an array of floats
-	tmp2 = convert(Array{Float32,2}, tmp & 0x000000ff) / 255.0;
-	tmp2 = convert(Array{Float32,2}, tmp2);
-	return tmp2
+function render_text( text_str::AbstractString, xpos, ypos )
+
+  data = Matrix{UInt32}( 256, 256 );
+  c = CairoImageSurface( data, Cairo.FORMAT_ARGB32 );
+  cr = CairoContext( c );
+
+  set_source_rgb( cr, 1., 1., 1. );
+  rectangle( cr, 0., 0., 256., 256. );
+  fill( cr );
+
+  set_source_rgb( cr, 0, 0, 0 );
+  select_font_face( cr, "Sans", Cairo.FONT_SLANT_NORMAL,
+                    Cairo.FONT_WEIGHT_BOLD );
+  set_font_size( cr, 90.0 );
+
+  move_to( cr, xpos, ypos );
+  show_text( cr, text_str );
+
+  # tmp is an Array{UInt32,2}
+  tmp = cr.surface.data;
+
+  # grab just the blue channel, and convert the array to an array of floats
+  tmp2 = convert( Array{Float32,2}, tmp & 0x000000ff ) / 255.0;
+  tmp2 = convert( Array{Float32,2}, tmp2 );
+
+  return tmp2
 end
 # The emboss primitive
 function emboss( img::Array )
-	f = [ -2. -1. 0. -1. 1. 1. 0. 1. 1. ];
-	f = convert(Array{Float32,2}, f);
-	es = conv2(f, img);
-	es = es[1:256,1:256];
-	return es
+  f = [ -2. -1. 0.
+        -1.  1. 1.
+         0.  1. 1. ];
+  f = convert( Array{Float32,2}, f );
+
+  es = conv2( f, img );
+  es = es[1:256,1:256];
+  return es    
 end
 # The drop_shadow primitive
-function drop_shadow(img::Array)
-	foo = convert( Array{Float32,2}, gaussian2d(5.0,[25,25]) );
-	foo = foo / maximum(foo);
-	ds = conv2(foo, img);
-	ds = ds[13:256+12,13:256+12];
-	ds = ds / sum(foo);
-	return ds
+function drop_shadow( img::Array )
+  foo = convert(Array{Float32,2}, Kernel.gaussian((5.0,5.0),(25,25))[-12:12,-12:12]);
+  foo = foo / maximum(foo);
+  ds = conv2( foo, img );
+  ds = ds[13:256+12,13:256+12];
+  ds = ds / sum(foo);
+  return ds
 end
 # The inner_shadow primitive
-function inner_shadow(img::Array) # Assumes imgage is black-on-white
-	 foo = convert(Array{Float32,2}, gaussian2d(5.0,[25,25]));
-	 foo = foo / maximum(foo);
-	 is = conv2(foo, 1.0-img);
-	 is = is[8:251+12,8:251+12];
-	 is = is / sum(foo);
-	 is = max(is, img);
-	 return is
+function inner_shadow( img::Array )
+  foo = convert(Array{Float32,2}, Kernel.gaussian((5.0,5.0),(25,25))[-12:12,-12:12]);
+  foo = foo / maximum(foo);
+  is = conv2( foo, 1.0-img );
+  is = is[8:251+12,8:251+12];
+  is = is / sum(foo);
+  is = max( is, img );
+  return is
 end
 
 #
@@ -312,10 +323,10 @@ function parse(expr::Array{Any})
 			   	throw(LispError("Invalid syntax for simple_save"))
 			end
 		elseif op_symbol == :render_text
-		       	if length(expr) == 4 && typeof(expr[2]) != String # Verify correct arguments
+		       	if length(expr) == 4 && typeof(expr[2]) == String # Verify correct arguments
 			   	return RenderText(expr[2], parse(expr[3]), parse(expr[4])) # Easy parse I know
 			else
-				throw(LispError("Invalid syntax for render_text."))
+				throw(LispError("Invalid syntax for render_text. Length = $(length(expr)) and type = $(typeof(expr[2]))"))
 			end
 		elseif op_symbol == :emboss
 		       	if length(expr) == 2 # Verify correct argument length
@@ -594,7 +605,7 @@ function calc(owl::SimpleSave, env::Environment)
 	if typeof(matrix) == MatrixVal # Check correct input
 	   	return simple_save(matrix.n, owl.location)
 	else
-		throw(LispError("Expected MatrixVal in simple_save of $matrix."))
+		throw(LispError("Expected MatrixVal in simple_save calculation. Got \'$(typeof(matrix))\' instead."))
 	end
 end
 # Calculate RenderText nodes
