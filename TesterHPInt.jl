@@ -155,7 +155,7 @@ catch
     	interpret( test)
 end
 test="(with ((cat (simple_load \"cat_256.png\"))) (simple_save (inner_shadow cat) \"output.png\"))"
-println(testNum(@tnum()) * "Load and Save")
+println(testNum(@tnum()) * "Inner Shadow")
 try
 	interpret(test)
 catch
@@ -163,7 +163,7 @@ catch
     	interpret( test)
 end
 test="(with ((cat (simple_load \"cat_256.png\"))) (simple_save (drop_shadow cat) \"output.png\"))"
-println(testNum(@tnum()) * "Load and Save")
+println(testNum(@tnum()) * "Drop Shadow")
 try
 	interpret(test)
 catch
@@ -171,7 +171,7 @@ catch
     	interpret( test)
 end
 test="(with ((cat (simple_load \"cat_256.png\"))) (simple_save (max 0.5 cat) \"output.png\"))"
-println(testNum(@tnum()) * "Load and Save")
+println(testNum(@tnum()) * "Max")
 try
 	interpret(test)
 catch
@@ -179,7 +179,7 @@ catch
     	interpret( test)
 end
 test="(with ((cat (simple_load \"cat_256.png\"))) (simple_save (min 0.5 cat) \"output.png\"))"
-println(testNum(@tnum()) * "Load and Save")
+println(testNum(@tnum()) * "Min")
 try
 	interpret(test)
 catch
@@ -187,7 +187,7 @@ catch
     	interpret( test)
 end
 test="(with ((cat (simple_load \"cat_256.png\"))) (simple_save (- 1 cat) \"output.png\"))"
-println(testNum(@tnum()) * "Load and Save")
+println(testNum(@tnum()) * "Decrement")
 try
 	interpret(test)
 catch
@@ -195,7 +195,7 @@ catch
     	interpret( test)
 end
 test="(with ((cat (simple_load \"cat_256.png\"))) (simple_save (+ cat cat) \"output.png\"))"
-println(testNum(@tnum()) * "Load and Save")
+println(testNum(@tnum()) * "Addition")
 try
 	interpret(test)
 catch
@@ -203,7 +203,7 @@ catch
     	interpret( test)
 end
 test="(with ((cat (simple_load \"cat_256.png\"))) (simple_save (- cat cat) \"output.png\"))"
-println(testNum(@tnum()) * "Load and Save")
+println(testNum(@tnum()) * "Subtraction")
 try
 	interpret(test)
 catch
@@ -211,7 +211,7 @@ catch
     	interpret( test)
 end
 test="(with ((cat (simple_load \"cat_256.png\"))) (simple_save (min (render_text \"CAT\" 40 230) cat) \"output.png\"))"
-println(testNum(@tnum()) * "Load and Save")
+println(testNum(@tnum()) * "Render Text")
 try
 	interpret(test)
 catch
@@ -219,7 +219,7 @@ catch
     	interpret( test)
 end
 test="(with ((cat (simple_load \"cat_256.png\"))) (simple_save (* (- 1 cat) cat) \"output.png\"))"
-println(testNum(@tnum()) * "Load and Save")
+println(testNum(@tnum()) * "Complex")
 try
 	interpret(test)
 catch
