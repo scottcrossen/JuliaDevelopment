@@ -147,8 +147,8 @@ catch
 	println("Failed to create image from sample code.")
     	interpret(test)
 end
+println(testNum(@tnum()) * "Emboss")
 test="(with ((cat (simple_load \"cat_256.png\"))) (simple_save (emboss cat) \"output"*string(testnum)*".png\"))"
-println(testNum(@tnum()) * "Load and Save")
 try
 	interpret(test)
 	println("Passed test " * testNum(testnum))
@@ -192,8 +192,8 @@ catch
 	println("Failed to create image from sample code.")
     	interpret( test)
 end
-test="(with ((cat (simple_load \"cat_256.png\"))) (simple_save (- 1 cat) \"output"*string(testnum)*".png\"))"
 println(testNum(@tnum()) * "Decrement")
+test="(with ((cat (simple_load \"cat_256.png\"))) (simple_save (- 1 cat) \"output"*string(testnum)*".png\"))"
 try
 	interpret(test)
 	println("Passed test " * testNum(testnum))
