@@ -138,110 +138,123 @@ catch
 end
 
 
-test="(with ((cat (simple_load \"cat_256.png\"))) (simple_save cat \"output.png\"))"
+test="(with ((cat (simple_load \"cat_256.png\"))) (simple_save cat \"output"*string(testnum)*".png\"))"
 println(testNum(@tnum()) * "Load and Save")
 try
 	interpret(test)
+	println("Passed test " * testNum(testnum))
 catch
 	println("Failed to create image from sample code.")
     	interpret( test)
 end
-test="(with ((cat (simple_load \"cat_256.png\"))) (simple_save (emboss cat) \"output.png\"))"
+test="(with ((cat (simple_load \"cat_256.png\"))) (simple_save (emboss cat) \"output"*string(testnum)*".png\"))"
 println(testNum(@tnum()) * "Load and Save")
 try
 	interpret(test)
+	println("Passed test " * testNum(testnum))
 catch
 	println("Failed to create image from sample code.")
     	interpret( test)
 end
-test="(with ((cat (simple_load \"cat_256.png\"))) (simple_save (inner_shadow cat) \"output.png\"))"
+test="(with ((cat (simple_load \"cat_256.png\"))) (simple_save (inner_shadow cat) \"output"*string(testnum)*".png\"))"
 println(testNum(@tnum()) * "Inner Shadow")
 try
 	interpret(test)
+	println("Passed test " * testNum(testnum))
 catch
 	println("Failed to create image from sample code.")
     	interpret( test)
 end
-test="(with ((cat (simple_load \"cat_256.png\"))) (simple_save (drop_shadow cat) \"output.png\"))"
+test="(with ((cat (simple_load \"cat_256.png\"))) (simple_save (drop_shadow cat) \"output"*string(testnum)*".png\"))"
 println(testNum(@tnum()) * "Drop Shadow")
 try
 	interpret(test)
+	println("Passed test " * testNum(testnum))
 catch
 	println("Failed to create image from sample code.")
     	interpret( test)
 end
-test="(with ((cat (simple_load \"cat_256.png\"))) (simple_save (max 0.5 cat) \"output.png\"))"
+test="(with ((cat (simple_load \"cat_256.png\"))) (simple_save (max 0.5 cat) \"output"*string(testnum)*".png\"))"
 println(testNum(@tnum()) * "Max")
 try
 	interpret(test)
+	println("Passed test " * testNum(testnum))
 catch
 	println("Failed to create image from sample code.")
     	interpret( test)
 end
-test="(with ((cat (simple_load \"cat_256.png\"))) (simple_save (min 0.5 cat) \"output.png\"))"
+test="(with ((cat (simple_load \"cat_256.png\"))) (simple_save (min 0.5 cat) \"output"*string(testnum)*".png\"))"
 println(testNum(@tnum()) * "Min")
 try
 	interpret(test)
+	println("Passed test " * testNum(testnum))
 catch
 	println("Failed to create image from sample code.")
     	interpret( test)
 end
-test="(with ((cat (simple_load \"cat_256.png\"))) (simple_save (- 1 cat) \"output.png\"))"
+test="(with ((cat (simple_load \"cat_256.png\"))) (simple_save (- 1 cat) \"output"*string(testnum)*".png\"))"
 println(testNum(@tnum()) * "Decrement")
 try
 	interpret(test)
+	println("Passed test " * testNum(testnum))
 catch
 	println("Failed to create image from sample code.")
     	interpret( test)
 end
-test="(with ((cat (simple_load \"cat_256.png\"))) (simple_save (+ cat cat) \"output.png\"))"
+test="(with ((cat (simple_load \"cat_256.png\"))) (simple_save (+ cat cat) \"output"*string(testnum)*".png\"))"
 println(testNum(@tnum()) * "Addition")
 try
 	interpret(test)
+	println("Passed test " * testNum(testnum))
 catch
 	println("Failed to create image from sample code.")
     	interpret( test)
 end
-test="(with ((cat (simple_load \"cat_256.png\"))) (simple_save (- cat cat) \"output.png\"))"
+test="(with ((cat (simple_load \"cat_256.png\"))) (simple_save (- cat cat) \"output"*string(testnum)*".png\"))"
 println(testNum(@tnum()) * "Subtraction")
 try
 	interpret(test)
+	println("Passed test " * testNum(testnum))
 catch
 	println("Failed to create image from sample code.")
     	interpret( test)
 end
-test="(with ((cat (simple_load \"cat_256.png\"))) (simple_save (min (render_text \"CAT\" 40 230) cat) \"output.png\"))"
+test="(with ((cat (simple_load \"cat_256.png\"))) (simple_save (min (render_text \"CAT\" 40 230) cat) \"output"*string(testnum)*".png\"))"
 println(testNum(@tnum()) * "Render Text")
 try
 	interpret(test)
+	println("Passed test " * testNum(testnum))
 catch
 	println("Failed to create image from sample code.")
     	interpret( test)
 end
-test="(with ((cat (simple_load \"cat_256.png\"))) (simple_save (* (- 1 cat) cat) \"output.png\"))"
+test="(with ((cat (simple_load \"cat_256.png\"))) (simple_save (* (- 1 cat) cat) \"output"*string(testnum)*".png\"))"
 println(testNum(@tnum()) * "Complex")
 try
 	interpret(test)
+	println("Passed test " * testNum(testnum))
 catch
 	println("Failed to create image from sample code.")
     	interpret( test)
 end
 
 
-test="(with ( (base_img (render_text \"Hello\" 25 100)) (swirl (simple_load \"swirl_256.png\")) ) (with ( (ds (drop_shadow base_img)) ) (with ( (tmp4 (+ (* (+ (min ds base_img) (- 1 base_img)) base_img) (* (- 1 base_img) swirl) )) ) (with ( (tmp5 (- 1 (emboss tmp4))) (base_img2 (render_text \"world!\" 5 200)) ) (with ( (is (inner_shadow base_img2)) ) (with ( (tmp6 (max base_img2 (* (- 1 base_img2) is))) ) (with ( (output (min tmp5 tmp6)) ) (simple_save output \"output.png\") ) ) ) ) ) ) )"
+test="(with ( (base_img (render_text \"Hello\" 25 100)) (swirl (simple_load \"swirl_256.png\")) ) (with ( (ds (drop_shadow base_img)) ) (with ( (tmp4 (+ (* (+ (min ds base_img) (- 1 base_img)) base_img) (* (- 1 base_img) swirl) )) ) (with ( (tmp5 (- 1 (emboss tmp4))) (base_img2 (render_text \"world!\" 5 200)) ) (with ( (is (inner_shadow base_img2)) ) (with ( (tmp6 (max base_img2 (* (- 1 base_img2) is))) ) (with ( (output (min tmp5 tmp6)) ) (simple_save output \"output"*string(testnum)*".png\") ) ) ) ) ) ) )"
 println(testNum(@tnum()) * "Sample Hello World")
 try
 	interpret(test)
+	println("Passed test " * testNum(testnum))
 catch
 	println("Failed to create image from sample code.")
     	interpret( test)
 end
 
 
-test="(with ((cat (simple_load \"cat_256.png\"))) (with ((inv (- 1 cat))) (with ( (output (drop_shadow inv)) ) (simple_save output \"output2.png\"))))"
+test="(with ((cat (simple_load \"cat_256.png\"))) (with ((inv (- 1 cat))) (with ( (output (drop_shadow inv)) ) (simple_save output \"output"*string(testnum)*".png\"))))"
 println(testNum(@tnum()) * "Cat picture")
 try
 	interpret(test)
+	println("Passed test " * testNum(testnum))
 catch
 	println("Failed to create cat image.")
 	interpret(test)
