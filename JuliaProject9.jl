@@ -79,7 +79,7 @@ type SimpleLoad <: OWL
      	location::AbstractString
 end
 type SimpleSave <: OWL
-     	maatrix:OWL
+	matrix::OWL
 	location::AbstractString
 end
 type RenderText <: OWL
@@ -201,7 +201,7 @@ op_table = Dict([
 			(:*,*),
 			(:/,/),
 			(:mod,mod),
-			(:collatz,collatz)
+			(:collatz,collatz),
       			(:min, min),
 			(:max, max)
 		])
@@ -275,7 +275,7 @@ function parse(expr::Array{Any})
 				if no_dups(binding_exprs) # Check to make sure there's no duplicates in the binders
 					binders=Binder[]
 					if length(binding_exprs) == 0
-					   	// Do nothing
+					   	# Do nothing
 					elseif typeof(binding_exprs[1]) == Array{Any,1}
 					       	for i in 1:size(binding_exprs,1) # Go through list and bind values
 						      	if length(binding_exprs[i]) == 2
@@ -319,7 +319,7 @@ function parse(expr::Array{Any})
 			end
 		elseif op_symbol == :render_text
 		       	if length(expr) == 4 && typeof(expr[2]) != ASCIIString
-			   	return RenderText(expr[2], parse(expr[3]),parse[expr[4]))
+			   	return RenderText(expr[2], parse(expr[3]), parse(expr[4]))
 			else
 				throw(LispError("Invalid syntax for render_text."))
 			end
@@ -495,17 +495,25 @@ function calc(owl::Num, env::Environment)
 end
 # Handle binary operations as in the last lab
 function calc(owl::Binop, env::Environment) # The environment will just be used on calculating either side.
-	 left = calc(owl.lhs, env) 
-	 right = calc(owl.rhs, env)
-	 if typeof(left) == NumVal && typeof(right) == NumVal # Make sure things can evaluated in the calcs
-	    	 if (owl.op == /) && right.n == 0 # Make sure that we can't devide by zero
-		    	  throw(LispError("Cannot divide by zero in binary op"))
+	 left = fetch(@spawn calc(owl.lhs, env)) 
+	 right = fetch(@spawn calc(owl.rhs, env))
+	 if (owl.op != ./) || right.n != 0
+	    	 if typeof(left) == NumVal && typeof(right) == NumVal # Make sure things can evaluated in the calcs
+		    	return NumVal(owl.op(left.n, right.n)) # Return correct calculation
+		 elseif (typeof(left) == NumVal && typeof(right) == MatrixVal) || (typeof(left) == MatrixVal && typeof(right) == NumVal)
+		 	return MatrixVal( owl.op( left.n, right.n ) )
+
+		 elseif typeof(left) == MatrixVal && typeof(right) == MatrixVal
+	       	 	if length(left.n) != length(right.n) || length(left.n[1]) != length(right.n[1])
+			   	throw( LispError( "Cannot perform binary operations on matrixes of different sizes" ) )
+			end
+			return MatrixVal( owl.op( left.n, right.n ) )
 		 else
-			  return NumVal(owl.op(left.n, right.n)) # Return correct calculation
+			throw(LispError("Invalid binary op types did not evaluate correctly"))
 		 end
-	 else
-		 throw(LispError("Invalid binary op types did not evaluate correctly"))
-	 end
+	else
+		throw( LispError( "Cannot divide by zero." ) )
+	end
 end
 # Handle bnary operations in a similar fashion to binary operations
 function calc(owl::Unop, env::Environment) # As in Binop, the environment is just used to calculate the expression recursively
@@ -537,7 +545,7 @@ end
 function calc(owl::Id, env::Environment)
 	 if env == mtEnv() # Check to see if it's an mpty environment.
 	    	 throw(LispError("Could not find symbol \'$owl\'"))
-	 elseif hasSymVal(env.symvals, owl) # See helper function
+	 elseif -1 != hasSymVal(env.symvals, owl) # See helper function
 	 	 return getValue(env.symvals, owl) # Return symbol value.
 	 else
 		 return calc(owl, env.parent) # I believe I need this for recursion
@@ -563,8 +571,8 @@ function calc( owl::FunApp, env::Environment )
 	    	 if length(owl.arg_exprs) == length(ret_closure.params) # These two lists should be equal.
 	 	    	  # Extend the current environment by binding the actual parameters to the formal parameters
 	 	 	  symvals = SymVal[] # Build array
-	 	 	  for i in 1:size(owl.arg_exprs,1) # Iterate through array and push calcualted symbols
-	       	       	      	   push!(symvals, SymVal(ret_closure.params[i], calc(owl.arg_exprs[i], env)))
+			  for param in zip(the_closure.params, owl.arg_exprs)
+			      	  push!(symvals, SymVal(param[1], @spawn calc(param[2], env)))
 	 	 	  end
 	      	 	  return calc(ret_closure.body, CEnvironment(symvals, ret_closure.env)) # Calculate new environment and return
 		 else
@@ -573,6 +581,53 @@ function calc( owl::FunApp, env::Environment )
 	 else
 		 throw(LispError("Invalid type did not return closure"))
 	 end
+end
+# SimpleLoad
+function calc(owl::SimpleLoad, env::Environment)
+	return MatrixVal(simple_load(owl.location))
+end
+# SimpleSave
+function calc(owl::SimpleSave, env::Environment)
+	matrix = calc(owl.matrix, env)
+	if typeof(matrix) != MatrixVal
+		throw( ispError("Expected MatrixVal in simple_save of $matrix."))
+	end
+	return simple_save(matrix.n, owl.location)
+end
+# RenderText
+function calc(owl::RenderText, env::Environment)
+	xpos = @spawn calc(owl.xpos, env)
+	ypos = @spawn calc(owl.ypos, env)
+	xpos = fetch(xpos)
+	ypos = fetch(ypos)
+	if typeof(xpos) != NumVal || typeof(ypos) != NumVal
+		throw(LispError("Expected NumVal in render_text."))
+	end
+	return MatrixVal(render_text(owl.words, xpos.n, ypos.n))
+end
+# Emboss
+function calc(owl::Emboss, env::Environment)
+	matrix = calc(owl.matrix, env)
+	if typeof(matrix) != MatrixVal
+		throw(LispError("Expected MatrixVal in emboss."))
+	end
+	return MatrixVal(emboss(matrix.n))
+end
+# DropShadow
+function calc(owl::DropShadow, env::Environment)
+	matrix = calc(owl.matrix, env)
+	if typeof(matrix) != MatrixVal
+		throw(LispError("Expected MatrixVal in drop_shadow."))
+	end
+	return MatrixVal(drop_shadow(matrix.n))
+end
+# InnerShadow
+function calc(owl::InnerShadow, env::Environment)
+	matrix = calc(owl.matrix, env)
+	if typeof(matrix) != MatrixVal
+		throw(LispError("Expected MatrixVal in inner_shadow."))
+	end
+	return MatrixVal(inner_shadow(matrix.n))
 end
 # Default calc case
 function calc(owl::Any)
