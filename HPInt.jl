@@ -661,23 +661,11 @@ end
 # =================================================
 #
 
-## This is for debugging
+# This is for debugging
 function calc(expr::AbstractString)
 	 return calc(analyze(parse(Lexer.lex(expr))))
 end
 
-## TODO: check recursive function
-#println(calc("(with ( (recur (lambda (x) (
-#		    if0 x 0 (recur (- x))
-#)) ) ) (recur 5))"))
-#println(analyze(parse(Lexer.lex("(with ((x 1)) x)"))))
-#println(calc("(with ((x 1)) x)"))
-#println(analyze(parse(Lexer.lex("((lambda (x) x) 1)"))))
-#println(calc("((lambda (x) x) 1)"))
-#println(analyze(parse(Lexer.lex("(with ((x 1) (y 2)) y)"))))
-#println(calc("(with ((x 1) (y 2)) y)"))
-#println(analyze(parse(Lexer.lex("((lambda (x y) y) 1 2)"))))
-#println(calc("((lambda (x y) y) 1 2)"))
 #
 # =================================================
 #
