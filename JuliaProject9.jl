@@ -103,6 +103,7 @@ end
 # =================================================
 #
 
+# The collatz primitive
 function collatz(n::Real)
 	return collatz_helper(n, 0)
 end
@@ -116,11 +117,7 @@ function collatz_helper(n::Real, num_iters::Int)
 		return collatz_helper(3*n+1, num_iters+1)
 	end
 end
-
-#
-# =================================================
-#
-
+# The simple_load primitive
 function simple_load(imp_path::AbstractString)
 	im= Images.load(img_path);
 	tmp=Images.separate(im);
@@ -129,6 +126,7 @@ function simple_load(imp_path::AbstractString)
 	d=convert(Array{Float32,2},f);
 	return d
 end
+# The simple_save primitive
 function simple_save(output::Array, img_path::AbstractString)
 	output[output .> 1.0]=1.0
 	output[output .< 0.0]=0.0
@@ -138,54 +136,51 @@ function simple_save(output::Array, img_path::AbstractString)
     	write_to_png(c2, img_path)
     	return 42
 end
-function render_text( text_str::AbstractString, xpos, ypos )
-	data = Matrix{UInt32}( 256, 256 );
-	c = CairoImageSurface( data, Cairo.FORMAT_ARGB32 );
-	cr = CairoContext( c );
-	set_source_rgb( cr, 1., 1., 1. );
-	rectangle( cr, 0., 0., 256., 256. );
-	fill( cr );
+# The render_text primitive
+function render_text(text_str::AbstractString, xpos, ypos)
+	data = Matrix{UInt32}(256, 256);
+	c = CairoImageSurface( data, Cairo.FORMAT_ARGB32);
+	cr = CairoContext(c);
+	set_source_rgb(cr, 1., 1., 1.);
+	rectangle(cr, 0., 0., 256., 256.);
+	fill(cr);
 	set_source_rgb( cr, 0, 0, 0 );
-	select_font_face( cr, "Sans", Cairo.FONT_SLANT_NORMAL,
-                    Cairo.FONT_WEIGHT_BOLD );
-	set_font_size( cr, 90.0 );
-	move_to( cr, xpos, ypos );
-	show_text( cr, text_str );
+	select_font_face(cr, "Sans", Cairo.FONT_SLANT_NORMAL, Cairo.FONT_WEIGHT_BOLD);
+	set_font_size(cr, 90.0);
+	move_to(cr, xpos, ypos);
+	show_text(cr, text_str);
 	# tmp is an Array{UInt32,2}
 	tmp = cr.surface.data;
 	# grab just the blue channel, and convert the array to an array of floats
-	tmp2 = convert( Array{Float32,2}, tmp & 0x000000ff ) / 255.0;
-	tmp2 = convert( Array{Float32,2}, tmp2 );
+	tmp2 = convert(Array{Float32,2}, tmp & 0x000000ff) / 255.0;
+	tmp2 = convert(Array{Float32,2}, tmp2);
 	return tmp2
 end
-
-#
-# =================================================
-#
-
+# The emboss primitive
 function emboss( img::Array )
 	f = [ -2. -1. 0. -1. 1. 1. 0. 1. 1. ];
-	f = convert( Array{Float32,2}, f );
-	es = conv2( f, img );
+	f = convert(Array{Float32,2}, f);
+	es = conv2(f, img);
 	es = es[1:256,1:256];
 	return es
 end
-function drop_shadow( img::Array )
+# The drop_shadow primitive
+function drop_shadow(img::Array)
 	foo = convert( Array{Float32,2}, gaussian2d(5.0,[25,25]) );
 	foo = foo / maximum(foo);
-	ds = conv2( foo, img );
+	ds = conv2(foo, img);
 	ds = ds[13:256+12,13:256+12];
 	ds = ds / sum(foo);
 	return ds
 end
-# assumes img is black-on-white
-function inner_shadow( img::Array )
-	 foo = convert( Array{Float32,2}, gaussian2d(5.0,[25,25]) );
+# The inner_shadow primitive
+function inner_shadow(img::Array) # Assumes imgage is black-on-white
+	 foo = convert(Array{Float32,2}, gaussian2d(5.0,[25,25]));
 	 foo = foo / maximum(foo);
-	 is = conv2( foo, 1.0-img );
+	 is = conv2(foo, 1.0-img);
 	 is = is[8:251+12,8:251+12];
 	 is = is / sum(foo);
-	 is = max( is, img );
+	 is = max(is, img);
 	 return is
 end
 
@@ -254,11 +249,11 @@ function parse(expr::Array{Any})
 			if length(expr) >= 3 # Must have more than two parameters
 			   	ops = OWL[]
 				for i in 2:size(expr,1)
-			      	      	push!( ops, parse( expr[i] ) )
+			      	      	push!(ops, parse(expr[i]))
 				end
 				return And(ops)
 			else
-				throw( LispError( "Cannot perform 'and' operation without 2 or more operands." ) )
+				throw(LispError("Cannot perform 'and' operation without 2 or more operands."))
 			end
 			# Handle non-binary/uniary operators and AST elements seperately
 		elseif op_symbol==:if0
@@ -297,46 +292,46 @@ function parse(expr::Array{Any})
 		elseif op_symbol == :lambda
 	       	        if length(expr) == 3 # Verify correct argument length
 		   	   	if no_dups(expr[2]) # Make sure the arguments aren't duplicated
-					return FunDef(map(parse, expr[2]),parse(expr[3])) # elements: 2- argument list. 3-function body
+					return FunDef(map(parse, expr[2]),parse(expr[3])) # elements: 2- argument list. 3- function body
 				else
 					throw(LispError("Duplicate symbols in \'lambda\' expression"))
 				end
 	       		else
 				throw(LispError("Wrong amount of parameters given for \'lambda\'"))
 			end
-		elseif op_symbol==:lambda
-			if length(expr) == 2 && typeof(expr[2]) == String
-			   	return SimpleLoad(expr[2])
+		elseif op_symbol==:simple_load
+			if length(expr) == 2 && typeof(expr[2]) == String # Verify correct arguments
+			   	return SimpleLoad(expr[2]) # Easy parse I know
 			else
 				throw(LispError("Invalid syntax for simple_load."))
 			end
 		elseif op_symbol == :simple_save
-		        if length(expr) == 3 && typeof(expr[3]) == String
-				return SimpleSave(parse(expr[2]),expr[3])
+		        if length(expr) == 3 && typeof(expr[3]) == String # Verify correct arguments
+				return SimpleSave(parse(expr[2]),expr[3]) # Easy parse I know
 			else
 			   	throw(LispError("Invalid syntax for simple_save"))
 			end
 		elseif op_symbol == :render_text
-		       	if length(expr) == 4 && typeof(expr[2]) != String
-			   	return RenderText(expr[2], parse(expr[3]), parse(expr[4]))
+		       	if length(expr) == 4 && typeof(expr[2]) != String # Verify correct arguments
+			   	return RenderText(expr[2], parse(expr[3]), parse(expr[4])) # Easy parse I know
 			else
 				throw(LispError("Invalid syntax for render_text."))
 			end
 		elseif op_symbol == :emboss
-		       	if length(expr) == 2
-			   	return Emboss(parse(expr[2]))
+		       	if length(expr) == 2 # Verify correct argument length
+			   	return Emboss(parse(expr[2])) # Easy parse I know
 			else
 				throw(LispError("Invalid syntax for emboss."))
 			end
 		elseif op_symbol == :drop_shadow
-		       	if length(expr) == 2
-			   	return DropShadow(parse(expr[2]))
+		       	if length(expr) == 2 # Verify correct argument length
+			   	return DropShadow(parse(expr[2])) # Another easy parse I know
 			else
 				throw(LispError("Invalid syntax for drop_shadow."))
 			end
 		elseif op_symbol == :inner_shadow
-		       	if length(expr) == 2
-			   	return InnerShadow(parse(expr[2]))
+		       	if length(expr) == 2 # Verify correct argument length
+			   	return InnerShadow(parse(expr[2])) # Easy parse I know
 			else
 				throw(LispError("Invalid syntax for inner_shadow."))
 			end
@@ -359,8 +354,8 @@ end
 function no_dups(exprs::Array{Any})
 	if length(exprs) > 0
   	   	syms = Any[]
-		if typeof(exprs[1]) == Array{Any,1} # With nodes should have this
-		   	if length(exprs[1]) != 0
+		if typeof(exprs[1]) == Array{Any,1} # With nodes should all have this
+		   	if length(exprs[1]) != 0 # Empty lists are okay. Handle seperately
     	   		   	for i in 1:size(exprs,1)
 			       	      	if typeof(exprs[i][1]) != Symbol
 				   	   	throw(LispError("Must use symbols for binding expressions"))
@@ -457,33 +452,33 @@ function analyze(owl::And)
 		return If0(analyze(owl.operands[1]), Num(0), analyze(And(owl.operands[2:end])))
 	end
 end
-# SimpleLoad
+# Handle simple load nodes
 function analyze(owl::SimpleLoad)
-	return owl
+	return owl # Leaf node
 end
-# SimpleSave
+# Handle simple save nodes
 function analyze(owl::SimpleSave)
-	return SimpleSave(analyze(owl.matrix), owl.location)
+	return SimpleSave(analyze(owl.matrix), owl.location) # Just pass on the recursion
 end
-# RenderText
+# Handle render text nodes
 function analyze(owl::RenderText)
-	return RenderText(owl.words, analyze(owl.xpos), analyze(owl.ypos))
+	return RenderText(owl.words, analyze(owl.xpos), analyze(owl.ypos)) # Just pass on the recursion
 end
-# Emboss
+# Handle emboss nodes
 function analyze(owl::Emboss)
-	return Emboss(analyze(owl.matrix))
+	return Emboss(analyze(owl.matrix)) # Just pass on the recursion
 end
-# DropShadow
+# Handle drop shadow nodes
 function analyze(owl::DropShadow)
-	return DropShadow(analyze(owl.matrix))
+	return DropShadow(analyze(owl.matrix)) # Just pass on the recursion
 end
-# InnerShadow
+# Handle inner shadow nodes
 function analyze(owl::InnerShadow)
-	return InnerShadow(analyze(owl.matrix))
+	return InnerShadow(analyze(owl.matrix)) # Just pass on the recursion
 end
-# Default function call
+# Handle default function call
 function analyze(owl::OWL) # Should never get here. Throw error.
-	throw(LispError("Unkown node!"))
+	throw(LispError("Unkown node!")) # Just pass on the recursion
 end
 
 #
@@ -500,24 +495,26 @@ function calc(owl::Num, env::Environment)
 end
 # Handle binary operations as in the last lab
 function calc(owl::Binop, env::Environment) # The environment will just be used on calculating either side.
-	 left = fetch(@spawn calc(owl.lhs, env)) 
+	 left = fetch(@spawn calc(owl.lhs, env)) # This is for threading both sides
 	 right = fetch(@spawn calc(owl.rhs, env))
 	 if (owl.op != ./) || right.n != 0
 	    	 if typeof(left) == NumVal && typeof(right) == NumVal # Make sure things can evaluated in the calcs
 		    	return NumVal(owl.op(left.n, right.n)) # Return correct calculation
+		 # Handle new data types
 		 elseif (typeof(left) == NumVal && typeof(right) == MatrixVal) || (typeof(left) == MatrixVal && typeof(right) == NumVal)
-		 	return MatrixVal( owl.op( left.n, right.n ) )
-
+		 	return MatrixVal(owl.op(left.n, right.n))
+		 # Handle new data types
 		 elseif typeof(left) == MatrixVal && typeof(right) == MatrixVal
-	       	 	if length(left.n) != length(right.n) || length(left.n[1]) != length(right.n[1])
-			   	throw( LispError( "Cannot perform binary operations on matrixes of different sizes" ) )
+	       	 	if length(left.n) == length(right.n) && length(left.n[1]) == length(right.n[1]) # Check correct sizes
+			   	return MatrixVal(owl.op(left.n, right.n))
+			else
+			   	throw(LispError("Cannot perform binary operations on matrices of different sizes."))
 			end
-			return MatrixVal( owl.op( left.n, right.n ) )
 		 else
 			throw(LispError("Invalid binary op types did not evaluate correctly"))
 		 end
 	else
-		throw( LispError( "Cannot divide by zero." ) )
+		throw(LispError("Cannot divide by zero."))
 	end
 end
 # Handle bnary operations in a similar fashion to binary operations
@@ -566,7 +563,7 @@ function calc(owl::With, env::Environment)
 end
 # Define the FunDef Node and pass of the closure
 function calc(owl::FunDef, env::Environment)
-	 return ClosureVal(owl.formal_parameters, owl.fun_body, env) # super simple I know.
+	 return ClosureVal(owl.formal_parameters, owl.fun_body, env) # Super simple I know.
 end
 # This is the FunApp node
 function calc( owl::FunApp, env::Environment )
@@ -587,52 +584,55 @@ function calc( owl::FunApp, env::Environment )
 		 throw(LispError("Invalid type did not return closure"))
 	 end
 end
-# SimpleLoad
+# Calculate SimpleLoad nodes
 function calc(owl::SimpleLoad, env::Environment)
-	return MatrixVal(simple_load(owl.location))
+	return MatrixVal(simple_load(owl.location)) # Construct primitive off of loader function
 end
-# SimpleSave
+# Calculate SimpleSave nodes
 function calc(owl::SimpleSave, env::Environment)
 	matrix = calc(owl.matrix, env)
-	if typeof(matrix) != MatrixVal
-		throw( ispError("Expected MatrixVal in simple_save of $matrix."))
+	if typeof(matrix) == MatrixVal # Check correct input
+	   	return simple_save(matrix.n, owl.location)
+	else
+		throw(LispError("Expected MatrixVal in simple_save of $matrix."))
 	end
-	return simple_save(matrix.n, owl.location)
 end
-# RenderText
+# Calculate RenderText nodes
 function calc(owl::RenderText, env::Environment)
-	xpos = @spawn calc(owl.xpos, env)
-	ypos = @spawn calc(owl.ypos, env)
-	xpos = fetch(xpos)
-	ypos = fetch(ypos)
-	if typeof(xpos) != NumVal || typeof(ypos) != NumVal
+	xpos = fetch(@spawn calc(owl.xpos, env)) # Thread this too.
+	ypos = fetch(@spawn calc(owl.ypos, env))
+	if typeof(xpos) == NumVal && typeof(ypos) == NumVal # Check correct input
+	   	return MatrixVal(render_text(owl.words, xpos.n, ypos.n))
+	else
 		throw(LispError("Expected NumVal in render_text."))
 	end
-	return MatrixVal(render_text(owl.words, xpos.n, ypos.n))
 end
-# Emboss
+# Calculate Emboss nodes
 function calc(owl::Emboss, env::Environment)
 	matrix = calc(owl.matrix, env)
-	if typeof(matrix) != MatrixVal
+	if typeof(matrix) == MatrixVal # Check correct input
+	   	return MatrixVal(emboss(matrix.n))
+	else
 		throw(LispError("Expected MatrixVal in emboss."))
 	end
-	return MatrixVal(emboss(matrix.n))
 end
-# DropShadow
+# Calculate DropShadow nodes
 function calc(owl::DropShadow, env::Environment)
 	matrix = calc(owl.matrix, env)
-	if typeof(matrix) != MatrixVal
+	if typeof(matrix) == MatrixVal # Check correct input
+	   	return MatrixVal(drop_shadow(matrix.n))
+	else
 		throw(LispError("Expected MatrixVal in drop_shadow."))
 	end
-	return MatrixVal(drop_shadow(matrix.n))
 end
-# InnerShadow
+# Calculate InnerShadow nodes
 function calc(owl::InnerShadow, env::Environment)
 	matrix = calc(owl.matrix, env)
-	if typeof(matrix) != MatrixVal
+	if typeof(matrix) == MatrixVal # Check correct input
+	   	return MatrixVal(inner_shadow(matrix.n))
+	else
 		throw(LispError("Expected MatrixVal in inner_shadow."))
 	end
-	return MatrixVal(inner_shadow(matrix.n))
 end
 # Default calc case
 function calc(owl::Any)
@@ -645,12 +645,11 @@ end
 # Helper function to check for symbol name in environment array
 function hasSymVal(symvals::Array{SymVal}, name::Id)
 	for i in 1:size(symvals,1) # Iterate through and find
-	       	 if symvals[i].name.name == name.name
+	       	 if symvals[i].name.name == name.name # I added some parameters to the AST nodes
 	       	    	 return i # Found
 		 end
 	end
-	return -1
-	# return (name in symvals) # this won't work with different types fyi
+	return -1 # Not found
 end
 # Helper function to get value associated with symbol name
 function getValue(symvals::Array{SymVal}, index::Int)
