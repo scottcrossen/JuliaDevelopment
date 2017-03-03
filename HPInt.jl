@@ -508,7 +508,7 @@ end
 function calc(owl::Binop, env::Environment) # The environment will just be used on calculating either side.
 	 left = fetch(@spawn calc(owl.lhs, env)) # This is for threading both sides
 	 right = fetch(@spawn calc(owl.rhs, env))
-	 if (owl.op != ./) || right.n != 0
+	 if ((owl.op != ./) || right.n != 0) && ((owl.op != /) || right.n != 0)
 	    	 if typeof(left) == NumVal && typeof(right) == NumVal # Make sure things can evaluated in the calcs
 		    	return NumVal(owl.op(left.n, right.n)) # Return correct calculation
 		 # Handle new data types
@@ -517,7 +517,13 @@ function calc(owl::Binop, env::Environment) # The environment will just be used 
 		 # Handle new data types
 		 elseif typeof(left) == MatrixVal && typeof(right) == MatrixVal
 	       	 	if length(left.n) == length(right.n) && length(left.n[1]) == length(right.n[1]) # Check correct sizes
-			   	return MatrixVal(owl.op(left.n, right.n))
+			   	if owl.op == *	
+					return MatrixVal(left.n .* right.n)
+				elseif owl.op == /
+					return MatrixVal(left.n ./ right.n)
+				else
+			   	   	return MatrixVal(owl.op(left.n, right.n))
+				end
 			else
 			   	throw(LispError("Cannot perform binary operations on matrices of different sizes."))
 			end
