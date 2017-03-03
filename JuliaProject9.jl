@@ -1,7 +1,6 @@
 module HPInt
 
 push!(LOAD_PATH, ".")
-
 using Error
 using Lexer
 using Images
@@ -306,19 +305,19 @@ function parse(expr::Array{Any})
 				throw(LispError("Wrong amount of parameters given for \'lambda\'"))
 			end
 		elseif op_symbol==:lambda
-			if length(expr) == 2 && typeof(expr[2]) == ASCIIString
+			if length(expr) == 2 && typeof(expr[2]) == String
 			   	return SimpleLoad(expr[2])
 			else
 				throw(LispError("Invalid syntax for simple_load."))
 			end
 		elseif op_symbol == :simple_save
-		        if length(expr) == 3 && typeof(expr[3]) == ASCIIString
+		        if length(expr) == 3 && typeof(expr[3]) == String
 				return SimpleSave(parse(expr[2]),expr[3])
 			else
 			   	throw(LispError("Invalid syntax for simple_save"))
 			end
 		elseif op_symbol == :render_text
-		       	if length(expr) == 4 && typeof(expr[2]) != ASCIIString
+		       	if length(expr) == 4 && typeof(expr[2]) != String
 			   	return RenderText(expr[2], parse(expr[3]), parse(expr[4]))
 			else
 				throw(LispError("Invalid syntax for render_text."))
@@ -434,7 +433,13 @@ function analyze(owl::If0) # Just pass on the recursion
 end
 # Handle with nodes
 function analyze(owl::With)
-	return FunApp(FunDef(getSyms(owl.binders), analyze(owl.body)), map(analyze, getBindingExprs(owl.binders)))
+	syms = Id[]
+	exprs = OWL[]
+	for i in 1:size(owl.binders,1)
+	      	push!(syms, owl.binders[i].name)
+		push!(exprs, owl.binders[i].binding_expr)
+	end
+	return FunApp(FunDef(syms, analyze(owl.body)), map(analyze, exprs))
 end
 # Handle function definition nodes
 function analyze(owl::FunDef) # Just pass on the recursion
@@ -545,8 +550,8 @@ end
 function calc(owl::Id, env::Environment)
 	 if env == mtEnv() # Check to see if it's an mpty environment.
 	    	 throw(LispError("Could not find symbol \'$owl\'"))
-	 elseif -1 != hasSymVal(env.symvals, owl) # See helper function
-	 	 return getValue(env.symvals, owl) # Return symbol value.
+	 elseif hasSymVal(env.symvals, owl) != -1 # See helper function
+	 	 return getValue(env.symvals, hasSymVal(env.symvals, owl)) # Return symbol value.
 	 else
 		 return calc(owl, env.parent) # I believe I need this for recursion
 	 end
@@ -571,7 +576,7 @@ function calc( owl::FunApp, env::Environment )
 	    	 if length(owl.arg_exprs) == length(ret_closure.params) # These two lists should be equal.
 	 	    	  # Extend the current environment by binding the actual parameters to the formal parameters
 	 	 	  symvals = SymVal[] # Build array
-			  for param in zip(the_closure.params, owl.arg_exprs)
+			  for param in zip(ret_closure.params, owl.arg_exprs)
 			      	  push!(symvals, SymVal(param[1], @spawn calc(param[2], env)))
 	 	 	  end
 	      	 	  return calc(ret_closure.body, CEnvironment(symvals, ret_closure.env)) # Calculate new environment and return
