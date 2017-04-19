@@ -427,10 +427,9 @@ end # module
 # ===================================================
 
 # Begin test cases
-
 #=
 println("Beginning test cases\n")
-CITypes.test("(1 2)")
+# These should evaluate
 CITypes.test("1")
 CITypes.test("false")
 CITypes.test("(+ 1 5)")
@@ -438,13 +437,24 @@ CITypes.test("(- 1 5)")
 CITypes.test("(iszero 5)")
 CITypes.test("(ifb false 1 2)")
 CITypes.test("(with x 5 x)")
-CITypes.test("x")
 CITypes.test("(lambda x : number x)")
 CITypes.test("(lambda f : (number : number) (f 3))")
+CITypes.test("(lambda f : (nlist : number) f nempty)")
 CITypes.test("nempty")
-CITypes.test("(ncons (1 2) 3)")
-CITypes.test("(nisempty (1 2))")
-CITypes.test("(nfirst (1 2 3))")
-CITypes.test("(nrest (1 2 3))")
+CITypes.test("(ncons 3 nempty)")
+CITypes.test("(nisempty nempty)")
+CITypes.test("(nfirst nempty)")
+CITypes.test("(nrest nempty)")
+# These shouldn't evaluate
+CITypes.test("x")
+CITypes.test("(+ nempty 5)")
+CITypes.test("(- nempty 5)")
+CITypes.test("(iszero nempty)")
+CITypes.test("(ifb 1 1 2)")
+CITypes.test("(ifb true 1 nempty)")
+CITypes.test("(ncons 3 3)")
+CITypes.test("(nisempty 1)")
+CITypes.test("(nfirst 1)")
+CITypes.test("(nrest 1)")
 println("Finished with analysis\n")
 =#
