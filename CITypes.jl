@@ -1,14 +1,4 @@
-# If you're getting errors about not being able to load this, you may
-# need to add the current directory to the module load path:
-#
-# push!(LOAD_PATH, ".")
-#
-# This is how I make sure it's reloaded when something changes:
-# workspace(); reload("CITypes"); using CITypes
-#
-# This is a helper function to run through a bunch of tests in a file:
-# CITypes.testf( "./tests.txt" )
-#
+push!(LOAD_PATH, ".")
  
 module CITypes # based on the CI5 interpreter
  
@@ -261,9 +251,106 @@ function type_of_expr( ae::Minus, env::TypeEnvironment )
   return type_of_math_expr( left, right )
 end
  
- 
- 
- 
+# Start of student code 
+
+function type_of_expr(ae::IsZero, env::TypeEnvironment)
+  if same_type(type_of_expr(ae.arg, env), NumType())
+    return BoolType()
+  else
+    throw(LispError("Conditional in $(ae) must evaluate to a number"))
+  end
+end
+
+function type_of_expr(ae::IfB, env::TypeEnvironment)
+  if same_type(type_of_expr(ae.condition, env), BoolType())
+    true_type = type_of_expr(ae.true_branch, env)
+    false_type = type_of_expr(ae.false_branch, env)
+    if same_type(true_type, false_type)
+      return true_type
+    else
+      throw(LispError("Branches in $(ae) must be of same type"))
+    end
+  else
+    throw(LispError("Conditional in $(ae) must evaluate to boolean"))
+  end
+end
+
+function type_of_expr(ae::With, env::TypeEnvironment)
+  binding_type = type_of_expr(ae.binding_expr, env)
+  return type_of_expr(ae.body, CTypeEnvironment(ae.name, binding_type, env))
+end
+
+function type_of_expr(ae::Id, env::TypeEnvironment)
+  if typeof(env) != mtTypeEnvironment
+    if ae.name == env.name
+      return env.value
+    else
+      return type_of_expr(ae, env.parent)
+    end
+  else
+    throw(LispError("$(ae) of type ID could not be resolved in environment"))
+  end
+end
+
+function type_of_expr(ae::FunDef, env::TypeEnvironment)
+  new_env = CTypeEnvironment(ae.formal_parameter, ae.formal_type, env)
+  return FunType(ae.formal_type, type_of_expr(ae.fun_body, new_env))
+end
+
+function type_of_expr(ae::FunApp, env::TypeEnvironment)
+  func_type = type_of_expr(ae.fun_expr, env)
+  arg_type = type_of_expr(ae.arg_expr, env)
+  if typeof(func_type) == FunType
+    if same_type(func_type.arg_type, arg_type)
+      return func_type.result_type
+    else
+      throw(LispError("Argument expression in $(ae) must match argument type"))
+    end
+  else
+    throw(LispError("First parameter in $(ae) must be function definition"))
+  end
+end
+
+function type_of_expr(ae::NEmpty, env::TypeEnvironment)
+  return NListType()
+end
+
+function type_of_expr(ae::NCons, env::TypeEnvironment)
+  f_type = type_of_expr(ae.f, env)
+  r_type = type_of_expr(ae.r, env)
+  if same_type(f_type, NumType()) && same_type(r_type, NListType())
+    return NListType()
+  else
+    throw(LispError("Parameters of $(ae) must be of type number and nlist"))
+  end
+end
+
+function type_of_expr(ae::NIsEmpty, env::TypeEnvironment)
+  list_type = type_of_expr(ae.list, env)
+  if same_type(list_type, NListType())
+    return BoolType()
+  else
+    throw(LispError("Parameter of $(ae) must be of nlist"))
+  end
+end
+
+function type_of_expr(ae::NFirst, env::TypeEnvironment)
+  list_type = type_of_expr(ae.list, env)
+  if same_type(list_type, NListType())
+    return NumType()
+  else
+    throw(LispError("Parameter of $(ae) must be of type nlist"))
+  end
+end
+
+function type_of_expr(ae::NRest, env::TypeEnvironment)
+  list_type = type_of_expr(ae.list, env)
+  if same_type(list_type, NListType())
+    return list_type
+  else
+    throw(LispError("Parameter of $(ae) must be of type nlist"))
+  end
+end
  
 # ===================================================
  
@@ -306,16 +393,26 @@ function test(line::AbstractString)
       type_out=type_of_expr(new_line)
       println("Process succeeded with type:")
       println(type_out)
-    catch error_obj
+    catch error_obj_a
       println("Found error in line")
-      println("Printing lexer output")
-      lexer_out = Lexer.lex(new_line)
-      println(lexer_out)
-      println("Printing parser output")
-      parser_out = parse(lexer_out)
-      println(parser_out)
-      println("Rethrowing error" )
-      throw(error_obj)
+      try
+        println("Printing lexer output")
+        lexer_out = Lexer.lex(new_line)
+        println(lexer_out)
+      catch error_obj_b
+        println("Printing lexer error")
+        #println(error_obj_b.msg)
+      end
+      try
+        println("Printing parser output")
+        parser_out = parse(lexer_out)
+        println(parser_out)
+      catch error_obj_c
+        println("Printing parser error")
+        #println(error_obj_c.msg)
+      end
+      println("Printing error object")
+      println(error_obj_a.msg)
     end
   else
     println("Line is empty.")
@@ -331,6 +428,23 @@ end # module
 
 # Begin test cases
 
+#=
 println("Beginning test cases\n")
+CITypes.test("(1 2)")
+CITypes.test("1")
+CITypes.test("false")
 CITypes.test("(+ 1 5)")
+CITypes.test("(- 1 5)")
+CITypes.test("(iszero 5)")
+CITypes.test("(ifb false 1 2)")
+CITypes.test("(with x 5 x)")
+CITypes.test("x")
+CITypes.test("(lambda x : number x)")
+CITypes.test("(lambda f : (number : number) (f 3))")
+CITypes.test("nempty")
+CITypes.test("(ncons (1 2) 3)")
+CITypes.test("(nisempty (1 2))")
+CITypes.test("(nfirst (1 2 3))")
+CITypes.test("(nrest (1 2 3))")
 println("Finished with analysis\n")
+=#
